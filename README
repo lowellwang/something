@@ -1,0 +1,279 @@
+################################################################
+#                                                              #
+#         Readme File                                          #
+#         For PEtot_TDDFT code, April 29, 2016                 #
+#         by Zhi Wang and Lin-Wang Wang                        #
+#         Based on Lin-Wang Wang's PEtot code                  #
+#         Please check cmsn.lbl.gov/html/PEtot/PEtot.html      #
+#         for the introduction of PEtot                        #
+#                                                              #
+################################################################
+
+
+------------------------- INPUT FILES -------------------------
+################################################################
+        etot.input              PEtot parameters
+        TDDFT.input             TDDFT parameters
+        xatom                   supercell info, atom positions
+        pseudo potentials       only vwr available now
+################################################################
+
+
+------------------------ OUTPUT FILES -------------------------
+################################################################
+(a) Regular output files: writen at every time step
+
+    report:
+        Report of PEtot. WILL BE REFRESH every time you run the program
+
+    report_TDDFT:
+        Report of TDDFT. OLD ONES WILL BE RENAMED when you run new calculations
+
+    plot_MD.txt:
+        E_tot, E_elec, E_nucl, Temp, the last atom's positions and velocities
+        for every time steps. The writing mode is 'append'.
+
+    dV:
+        Velocities of every nucleus for every time steps. Writing mode is 'append'
+
+    dxatom:
+        Positions of every nucleus for every time steps. Writing mode is 'append'
+
+    dfatom0,1:
+        Atomic forces on every nucleus for every time steps. Writing mode is 'append'
+
+    cc.*:
+        (BINARY) Coefficients {cij} (psi_i = \sum cij * phi_j)
+
+    occ.*:
+        Energies and occupations of adiabatic states, and energies of time-dependent states
+
+
+(b) Savepoint files: output 1) at every 'nwrite' step, and 2) at the last step,
+                     and 3) when selfconsistency loop number reach its maximum
+
+    wg_st.*:
+        (BINARY) Adiabatic states wavefunctions
+
+    rho_st_1,2,3.*:
+        (BINARY) Charge densities for last 3 steps.
+        E.g., rho_st_3.200 is rho.200, and rho_st_1.200 is rho.198
+
+    occ_st:
+        (BINARY) occupation of time-dependent states.
+        If iexci=0, it will only be generated when t=0, then it won't be changed again.
+        If iexci=1, it will be refreshed at every time step during the excitation, 
+        then it will not be changed again. See 'iexci' parameter below for more information.
+
+    btmp_st.*:
+        (BINARY) other essential data
+
+################################################################
+
+
+
+----------------- HOW TO WRITE INPUT PARAMETERS ----------------
+################################################################
+
+1. etot.input, xatom, vwr.*
+--------------------------------------------
+see original PEtot readme
+--------------------------------------------
+
+
+2. TDDFT.input
+--------------------------------------------
+
+Basic format: <parameter> = <value>, one line for one parameter.
+Lines start with '!' will be ignored as comments.
+Blank lines will be ignored.
+
+Parameter list: (* are essential parameters)
+
+    *dt:
+        Length of the time step (fs). It depends on how long time you want to simulate.
+        One simple formula is dt = alpha * 1/(adiabatic basis energy range)
+        alpha could be 1.5 for simulation ~ 100 fs, and 0.5 ~ 1 for simulation > 1 ps.
+        Never use alpha > 2, because it will lead to exponential divergency.
+
+    *istep:
+        Initial time step.
+        Set to 0 to start a new calculation, or set to >0 to restart from one exist savepoint.
+        If 'istep' > 0, the program will firstly search for file 'btmp_st.$($(istep)-1)', 
+        if this file does not exist, the program will then search for the newest 'btmp_st.*',
+        which will give a new 'istep'. Then TDDFT will be restart from time step = 'istep'.
+
+        For example, if one only has 'rho_st.20' 'wg_st.20' and 'btmp_st.20', 
+        then no matter what value 'istep' has, as long as 'istep' > 0, 
+        the calculation will restart from time step 21.
+
+        However if one has both 'btmp_st.20' and 'btmp_st.30', then if 'istep' = 21, 
+        the program will restart from time step 21, elseif 'istep' has any other value (>0), 
+        the program will restart from time step 31.
+
+    *nstep:
+        How many time steps will be calculated. Should be >= 1
+        The final time step = istep + nstep - 1
+
+    *mdmass:
+        Masses of nuclei (unit: proton mass)
+        Should be written in two lines:
+          line 1: 'mdmass ='
+          line 2: '<mass of nuclear type 1>, <mass of nuclear type 2>, ...'
+        The sequence in line 2 should be the same as the sequence in etot.input.
+        All nuclear types used in etot.input must have their masses written down here.
+
+    nbasis:
+        Default: mx
+        How many adiabatic states will be used as the basis set.
+        Should be <= 'mx' (etot.input line:18)
+
+    nbands:
+        Default: nbasis
+        How many time-dependent states will be calculated.
+        Should be <= 'nbasis'
+
+    nelm:
+        Default: 100
+        Maximum number of electronic selfconsistency (leapfrog) loops in every time step.
+        If the loop number goes beyond 'nelm', program will output data as a savepoint, then stop.
+
+    iexci:
+        Default: 0
+        Flag for artificial initial excitation.
+        Set to 0 for no initial excitation, or set to 1 to use it.
+        The excitation is done by directly changing the occupation.
+        Should be used with parameter 'hole', 'elect', 'nexci', 'rexci'
+
+    nexci:
+        Default: 1 if 'iexci' = 1
+        How many time steps the initial excitation will last. 
+        Should be >= 1. 
+        Set to 1 to have an 'immediate' excitation, which means the occupation will be changed in no time. 
+        Or set to >0 to have a continuous excitation. 
+        For example, if 'nexci'=10 and 'rexci'=1.0, 
+        the occupation will change 0.1 at every time step from step 0 to step 9; 
+        If 'nexci'=1 and 'rexci'=1.0, the occupation will change 1.0 at time step 0.
+
+    rexci:
+        Default: 1.d0 if 'iexci' = 1
+        How much charge will be excited (unit: e-). 
+        Should be >= 0.d0.
+
+    hole:
+        Default: HOMO state if 'iexci' = 1
+        Which state will become the hole state during the initial excitation.
+        Should be >= 1.
+
+    elect:
+        Default: LUMO state if 'iexci' = 1
+        Which state will become the electron state during the initial excitation. 
+        Should be >= 1.
+
+    nwrite:
+        Default: 10
+        The program will write 'wg_st' 'rho_st_1,2,3' 'btmp_st' 
+        into disk at every 'nwrite' time steps. 
+        Should be >= 1.
+        Smaller 'nwrite' needs larger disk space and higher I/O frequncy,
+        while larger 'nwrite' may not store the newest results in time.
+        Set it according to your need.
+
+    ibo_md:
+        Default: 0
+        Flag for Born–Oppenheimer MD.
+        Set to 1 to do the BO-MD instead of TDDFT.
+        When it.eq.1, 'nbasis', 'nbands', 'nelm', 'rhodiff', 'intglerr' will all be ignored.
+        'istep', 'nstep', 'nwrite', 'iforce', 'ivdt', 'tmprtr' will still be available.
+        BO-MD calculation will use parameters in etot.input
+        Cannot be used with 'iexci' = 1
+
+    iforce:
+        Default: 1
+        Flag for moving the atoms. 
+        Set to 0 to freeze all atoms, or set to 1 to let atoms move under DFT force.
+
+    ivdt:
+        Default: 0
+        Flag for time-dependent external electric field. 
+        Set to 0 to have no such field, or set to 1 to have one. 
+        See TDDFT.f90 calc_vext() for how to construct your own electric field.
+
+    rhodiff:
+        Default: 1.d-3
+        Allowed error (unit: e-) in total charge density in leapfrog loops.
+        Once if the leapfrog loop reaches 'rhodiff', 
+        the program will consider it as converged results, then go to next time step.
+
+    intglerr:
+        Default: 1.d-4
+        Allowed error (unit: 1) in the internal integral along [t,t+dt].
+        For every neighbor time point pair t1,t2 in the integral of [t,t+dt], 
+        the abs diff for every H elements ||H_ij(t1)|-|H_ij(t2)|| should all be <= intglerr.
+        Do not change it, unless you really need to.
+
+    imd:
+        Default: 1
+        What MD method should be applied. For now only imd=1 (VV method) is supported.
+
+    tmprtr:
+        Default: 0.d0 
+        Initial temperature (unit: K).
+        It is only used to generate nuclear random velocities at t=0.
+        Will be ignored if 'velocity' has been set.
+
+    ntmprtr:
+        Default: natom (xatom line:1)
+        How many atoms should be used when calculate the temperature and total momentum.
+        1 <= ntmprtr <= natom.
+        In the code, the temperature is calculated by the nuclear kinetic energies.
+        Only the first ntmprtr atoms (AFTER PETOT RESORTS ATOMS!!) will be used.
+        If high-energy nuclei exist and you want to skip them when calculate temperature, use this.
+        Again, PEtot will resort all atoms, so please make sure you know exactly which atom is which.
+
+    velocity:
+        Default: 0.d0 if 'tmprtr'.eq.0, and random numbers if 'tmprtr'.ne.0
+        Initial nuclear velocities. When it is set manually, the 'tmprtr' will be ignored.
+        Be careful to the atom sequence, because PEtot will resort all atoms.
+        Should be written in multiple lines:
+          line 1: 'velocity='
+          line 2: '<1st atom type> <1st atom v_x> <1st atom v_y> <1st atom v_z>'
+          line 3: '<2nd atom type> <2nd atom v_x> <2nd atom v_y> <2nd atom v_z>'
+          ...
+        I suggest you to copy the velocities directly from file dV. 
+        If you do so, please remember to copy the respective atom positions from file dxatom, too.
+        By doing so, you will always have the correct atom sequence for both xatom and velocity.
+
+        If you want to generate velocities all by yourself, please make sure the total momentum is zero,
+        otherwise the program will firstly correct it to zero, which will change your initial velocities.
+
+################################################################
+
+
+
+------------------------- HOW TO USE ---------------------------
+################################################################
+
+1. Start a new simulation:
+
+        Put all input files in the same directory.
+        Remember to set istep=0 in TDDFT.input for a new calculation.
+        Run PEtot_TDDFT in the same directory.
+
+2. Restart from one savepoint:
+
+        Firstly, an available savepoint set for time step = <step> should have all these files:
+        (1) all essential input files, the same as what you need to start a new calculation
+        (2) occ_st
+        (3) wg_st.<step>
+        (4) rho_st_1,2,3.<step>
+        (5) btmp_st.<step>
+        Once you have all these stuff, put them all in one directory.
+
+        Secondly, you need to set etot.input line:7 iwg_in=1, and wg_in1,2 to wg_st.<step>, respectively.
+        Then set istep=<step>+1 in TDDFT.input to use the <step> savepoint, 
+        or simply set istep=1 to use the newest savepoint.
+
+        Finally, run PEtot_TDDFT in the same directory.
+
+################################################################
