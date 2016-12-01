@@ -1,0 +1,8 @@
+*.o
+*.mod
+Makefile*
+makefile*
+PEtot*
+tags
+*.a
+*.so
