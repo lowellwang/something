@@ -1204,10 +1204,18 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! 5.
       IF(ibo_md.le.0) THEN
+        !!!!!!!!!!!!!!!!!!
+        ! output cc
         filename=trim(adjustl(fcc_st))//"."
         WRITE(fileindex,'(i)') itime-1
         filename=trim(adjustl(filename))//trim(adjustl(fileindex))
         CALL unfmtIO_c(18,filename,cc_pp0,mst*mmn*nkpt*islda,1,0)
+        !!!!!!!!!!!!!!!!!!
+        ! output H(t2)
+        filename="H_t2."
+        WRITE(fileindex,'(i)') itime-1
+        filename=trim(adjustl(filename))//trim(adjustl(fileindex))
+        CALL unfmtIO_c(18,filename,H_T,mst*mst*nkpt*islda,1,0)
       END IF
       ! 5. end
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
