@@ -110,9 +110,9 @@ c     calc current temperature, then make the output
         write(6,*) "Velocity Center:",vx0t,vy0t,vz0t
 
         open(11,file='plot_MD.txt',access='append')
-        write(11,*) "   Time,             E_tot,            E_elec,
+        write(11,'(A)') "    Time,             E_tot,            E_elec,
      &             E_ion,         E_ion_imp,              Temp,
-     $           Scaling"
+     &           Scaling"
         write(11,666) 0,TotalEn,Etot*HFs2vB2M,Enki,Enki_imp,
      &   Temp,scaling
         close(11)
