@@ -976,11 +976,11 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
       ! 0. calc states distribution and dipole(i,j)
       IF(ibshift.eq.1) THEN
 
-      itmp = 150
-      itmp2 = mmn
-      call calc_dipole(0, AL, nkpt, islda, frac, dipole, workr, totNel, itmp, itmp2)
+      itmp = 190
+      itmp2 = 214
+      call calc_dipole(1, AL, nkpt, islda, frac, dipole, workr, totNel, itmp, itmp2)
 
-      IF(0.eq.1) THEN
+      IF(1.eq.1) THEN
 
         filename="ds_dipole."
         WRITE(fileindex,'(i)') nkpt
