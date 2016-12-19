@@ -345,27 +345,7 @@ SUBROUTINE bandshift(kpt, iislda, E_st, AL, tot, iatom, xatom)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   ! force orthonormal
-
-  do i = 1, mst
-    if(i.gt.1) then
-      do j = 1, i-1
-        csum = ZERO
-        do ii = 1, mst
-          csum = csum + conjg(H_corrected(ii,j)) * H_corrected(ii,i)
-        enddo
-        do ii = 1, mst
-          H_corrected(ii,i) = H_corrected(ii,i) - csum * H_corrected(ii,j)
-        enddo
-      enddo
-    endif
-    rsum = 0.d0
-    do ii = 1, mst
-      rsum = rsum + abs(H_corrected(ii,i))**2
-    enddo
-    rsum = 1.d0 / sqrt(rsum)
-    H_corrected(:,i) = rsum * H_corrected(:,i)
-  enddo
-
+  call ortho_Gram(H_corrected, mst, mst)
 !  ! check orthonormal
 !
 !  do j = 1, mst

@@ -610,26 +610,9 @@ Loop_iiscf: DO iiscf = 1, mscf
           string = "<phi_t1|phi_t2>"
           CALL timing_mpi(string,t_0)
 
-          IF(mst2.lt.mst) cdot_tmp(mst2+1:mst,mst2+1:mst) = zero
-
           ! Orthonomalization cdot
-          DO j2 = 1,mst2
-            IF(j2.gt.1) THEN
-              DO j1 = 1,j2-1
-                cc3 = zero
-                DO i = 1,mst2
-                  cc3 = cc3 + conjg(cdot_tmp(i,j1)) * cdot_tmp(i,j2)
-                END DO
-                cdot_tmp(1:mst2,j2) = cdot_tmp(1:mst2,j2) - cc3 * cdot_tmp(1:mst2,j1)
-              END DO
-            END IF
-            sum0 = 0.d0
-            DO i = 1,mst2
-              sum0 = sum0 + real(cdot_tmp(i,j2) * conjg(cdot_tmp(i,j2)))
-            END DO
-            sum0 = 1.d0 / dsqrt(sum0)
-            cdot_tmp(1:mst2,j2) = sum0 * cdot_tmp(1:mst2,j2)
-          END DO
+          call ortho_Gram(cdot_tmp, mst, mst)
+          IF(mst2.lt.mst) cdot_tmp(mst2+1:mst,mst2+1:mst) = zero
 
           string = "orthonormal"
           CALL timing_mpi(string,t_0)
@@ -830,26 +813,7 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
       ! enforce orthogonalization
       DO iislda=1,islda
       DO kpt=1,nkpt
-        DO m1=1,mst2
-          IF(m1.gt.1) THEN
-            DO m2=1,m1-1
-              csum=zero
-              DO im=1,mst2
-                csum=csum+cc_a_0(im,m1,kpt,iislda)* &
-                          conjg(cc_a_0(im,m2,kpt,iislda))
-              END DO
-              cc_a_0(1:mst2,m1,kpt,iislda) = &
-               cc_a_0(1:mst2,m1,kpt,iislda)-csum* &
-               cc_a_0(1:mst2,m2,kpt,iislda)
-            END DO    ! m2
-          END IF
-          rsum=0.d0
-          DO im=1,mst2
-            rsum=rsum+abs(cc_a_0(im,m1,kpt,iislda))**2
-          END DO
-          rsum=1.d0/dsqrt(rsum)
-          cc_a_0(1:mst2,m1,kpt,iislda)=rsum*cc_a_0(1:mst2,m1,kpt,iislda)
-        END DO   ! m1
+        call ortho_Gram(cc_a_0(1,1,kpt,iislda), mst, mst)
       END DO  ! kpt
       END DO  ! iislda
 
@@ -895,39 +859,15 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
 
         ! normalize if needed
         IF(inormal.eq.1) THEN
-
           IF(mmn0.gt.1) THEN
             cc_pp_tmp(:,1:mmn0-1) = zero
             DO i = 1,mmn0-1
               cc_pp_tmp(i,i) = one
             ENDDO
           END IF
-
-          DO j2=1,mmn
-
-            IF(j2.gt.1) THEN
-              DO j1=1,j2-1
-                cc3=zero
-                DO i=1,mst2
-                  cc3=cc3+conjg(cc_pp_tmp(i,j1))*cc_pp_tmp(i,j2)
-                END DO
-                DO i=1,mst2
-                  cc_pp_tmp(i,j2)=cc_pp_tmp(i,j2)-cc3*cc_pp_tmp(i,j1)
-                END DO
-              END DO
-            END IF
-
-            sum0=0.d0
-            DO i=1,mst2
-              sum0=sum0+real(cc_pp_tmp(i,j2)*conjg(cc_pp_tmp(i,j2)))
-            END DO
-            sum0=1.d0/dsqrt(sum0)
-            cc_pp_tmp(:,j2)=sum0*cc_pp_tmp(:,j2)
-
-          END DO
-
+          call ortho_Gram(cc_pp_tmp, mst, mmn)
+          IF(mst2.lt.mst) cc_pp_tmp(mst2+1:mst,1:mmn) = zero
         END IF
-
         cc_pp(:,:,kpt,iislda)=cc_pp_tmp(:,:)
 
       END DO
@@ -2005,28 +1945,11 @@ SUBROUTINE cc_change_basis()
                         ng_n,cdot_tmp)
     cdot_tmp=cdot_tmp*vol
 
-    IF(mst2.lt.mst) cdot_tmp(mst2+1:mst,mst2+1:mst) = zero
-
     string = "<phi_t1|phi_t2>"
     CALL timing_mpi(string,t_0)
 
-    DO j2=1,mst2
-      IF(j2.gt.1) THEN
-        DO j1=1,j2-1
-          cc3=zero
-          DO i=1,mst2
-            cc3=cc3+conjg(cdot_tmp(i,j1))*cdot_tmp(i,j2)
-          END DO
-          cdot_tmp(1:mst2,j2)=cdot_tmp(1:mst2,j2)-cc3*cdot_tmp(1:mst2,j1)
-        END DO
-      END IF
-      sum0=0.d0
-      DO i=1,mst2
-        sum0=sum0+real(cdot_tmp(i,j2)*conjg(cdot_tmp(i,j2)))
-      END DO
-      sum0=1.d0/dsqrt(sum0)
-      cdot_tmp(1:mst2,j2)=sum0*cdot_tmp(1:mst2,j2)
-    END DO
+    call ortho_Gram(cdot_tmp, mst, mst)
+    IF(mst2.lt.mst) cdot_tmp(mst2+1:mst,mst2+1:mst) = zero
 
     DO m2=1,mst2
 
@@ -2069,28 +1992,8 @@ SUBROUTINE cc_change_basis()
         ENDDO
       END IF
 
-      DO j2=1,mmn
-
-        IF(j2.gt.1) THEN
-          DO j1=1,j2-1
-            cc3=zero
-            DO i=1,mst2
-              cc3=cc3+conjg(cc_pp_tmp(i,j1))*cc_pp_tmp(i,j2)
-            END DO
-            DO i=1,mst2
-              cc_pp_tmp(i,j2)=cc_pp_tmp(i,j2)-cc3*cc_pp_tmp(i,j1)
-            END DO
-          END DO
-        END IF
-
-        sum0=0.d0
-        DO i=1,mst2
-          sum0=sum0+real(cc_pp_tmp(i,j2)*conjg(cc_pp_tmp(i,j2)))
-        END DO
-        sum0=1.d0/dsqrt(sum0)
-        cc_pp_tmp(:,j2)=sum0*cc_pp_tmp(:,j2)
-
-      END DO
+      call ortho_Gram(cc_pp_tmp, mst, mmn)
+      IF(mst2.lt.mst) cc_pp_tmp(mst2+1:mst,1:mmn) = zero
 
       cc_pp(:,:,kpt,iislda)=cc_pp_tmp(:,:)
 
@@ -2423,28 +2326,8 @@ SUBROUTINE calc_boltz()
 
 !cccccccccccccccccccccccccccccccccccccccccccccc
 !      force orthonormal
-  DO j2=1,mst2
-
-    IF(j2.gt.1) THEN
-      DO j1=1,j2-1
-        cc3=zero
-        DO i=1,mst2
-          cc3=cc3+conjg(cdot_tmp(i,j1))*cdot_tmp(i,j2)
-        END DO
-        DO i=1,mst2
-          cdot_tmp(i,j2)=cdot_tmp(i,j2)-cc3*cdot_tmp(i,j1)
-        END DO
-      END DO
-    END IF
-
-    sum0=0.d0
-    DO i=1,mst2
-      sum0=sum0+real(cdot_tmp(i,j2)*conjg(cdot_tmp(i,j2)))
-    END DO
-    sum0=1.d0/dsqrt(sum0)
-    cdot_tmp(:,j2)=sum0*cdot_tmp(:,j2)
-
-  END DO
+  call ortho_Gram(cdot_tmp, mst, mst)
+  IF(mst2.lt.mst) cdot_tmp(mst2+1:mst,mst2+1:mst) = zero
 !cccccccccccccccccccccccccccccccccccccccccccccccc
 
   cdot(:,:,kpt,iislda)=cdot_tmp(:,:)
