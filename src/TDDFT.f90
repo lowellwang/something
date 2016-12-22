@@ -916,13 +916,13 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
       ! 0. calc states distribution and dipole(i,j)
       IF(ibshift.eq.1) THEN
 
-      itmp = 190
-      itmp2 = 214
+      itmp = 165
+      itmp2 = mmn
       call calc_dipole(1, AL, nkpt, islda, frac, dipole, workr, totNel, itmp, itmp2)
 
       IF(1.eq.1) THEN
 
-        filename="ds_dipole."
+        filename="as_dipole."
         WRITE(fileindex,'(i)') nkpt
         filename=trim(adjustl(filename))//trim(adjustl(fileindex))//"."
         WRITE(fileindex,'(i)') islda
@@ -932,8 +932,8 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
 
         OPEN(29,FILE=filename)
         REWIND(29)
-        DO i = itmp, floor(totNel/2.d0+0.1)
-          WRITE(29,180) (dipole(i,j,nkpt,islda), j=floor(totNel/2.d0+0.1)+1, itmp2)
+        DO i = itmp, itmp2
+          WRITE(29,180) (dipole(i,j,nkpt,islda), j=itmp, itmp2)
         END DO
         CLOSE(29)
 
@@ -1298,7 +1298,7 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
 9998  CONTINUE
     ! end of output
 
-180 FORMAT(100(E15.8,1x))
+180 FORMAT(300(E15.8,1x))
 
     IF(idone.eq.-1) EXIT Loop_itime
 

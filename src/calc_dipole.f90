@@ -93,8 +93,8 @@ subroutine calc_dipole(flag, AL, nkpt, islda, frac, dipole, workr_phi, tot, ist,
         enddo
         !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         if(flag.eq.1) then
-          do m = ilumo, ied
-            do n = ist, ilumo - 1
+          do m = ist+1, ied
+            do n = ist, m-1
               wf2   = workr_phi(ii, m - ist + 1)
               wf2_2 = workr_phi(ii, n - ist + 1)
               P(:, n, m) = P(:, n, m) + rn(:) * conjg(wf2) * wf2_2
@@ -119,8 +119,8 @@ subroutine calc_dipole(flag, AL, nkpt, islda, frac, dipole, workr_phi, tot, ist,
       if(flag.eq.1) then
         call mpi_allreduce(P, ctmp, 3*mst*mst, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_K, ierr)
         P = ctmp
-        do m = ilumo, ied
-          do n = ist, ilumo - 1
+        do m = ist+1, ied
+          do n = ist, m-1
             dipole(n, m, kpt, iislda) = abs(P(1,n,m))**2 + abs(P(2,n,m))**2 + abs(P(3,n,m))**2
           enddo
         enddo
