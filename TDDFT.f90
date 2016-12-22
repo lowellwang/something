@@ -1230,6 +1230,23 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
         filename=trim(adjustl(frho_out3(iislda)))//"."//trim(adjustl(fileindex))
         CALL rhoIO(AL,rho_storage_nL(1,iislda,3),mr_nL,1,n1L,n2L,n3L,filename)
 
+!        do i = 203, 208
+!  
+!         rho_tmp = 0.d0
+!         call d3fft_comp(ug_n_bp(1,i), workr_n, -1, 1)
+!         rho_tmp(1:nr_n) = cdabs(workr_n(1:nr_n))**2
+!         rho_tmp_nL = 0.d0
+!         call convert_SLvr(rho_tmp, rho_tmp_nL, 1)
+!  
+!         filename="rho"
+!         write(fileindex,'(i6)') i
+!         filename=trim(adjustl(filename))//"."//trim(adjustl(fileindex))
+!         write(fileindex,'(i6)') itime-1
+!         filename=trim(adjustl(filename))//"."//trim(adjustl(fileindex))
+!         call rhoIO(AL,rho_tmp_nL,mr_nL,1,n1L,n2L,n3L,filename)
+!  
+!        enddo
+
       END DO
 
       CALL MPI_barrier(MPI_COMM_WORLD,ierr)
@@ -1445,7 +1462,7 @@ SUBROUTINE initial_TDDFT()
       t_0=mpi_wtime()
     END IF
 
-    itime=0
+    itime = ntime_init
     CALL calc_vext()
 
     string = "before Etotcalc"
@@ -1573,6 +1590,7 @@ SUBROUTINE initial_TDDFT()
 
   END IF
 
+  itime = ntime_init
   CALL calc_psi()
 
   IF(inode.eq.1) THEN
@@ -2059,7 +2077,7 @@ SUBROUTINE calc_psi()
       END DO
 
       ! Calculate specific psi charge density
-      IF( iocc.gt.0 .and. mod((itime-1),10).eq.0 ) THEN
+      IF( iocc.gt.0 .and. (itime.eq.0 .or. mod((itime-1),10).eq.0) ) THEN
         rho_tmp2(1:nr_n)=rho_tmp2(1:nr_n)+abs(workr(1:nr_n,jelec))**2
         rho_tmp3(1:nr_n)=rho_tmp3(1:nr_n)+abs(workr(1:nr_n,jhole))**2
       ENDIF
@@ -2067,7 +2085,7 @@ SUBROUTINE calc_psi()
     END DO ! nkpt
 
     CALL convert_SLvr(rho_tmp,rho_tmp_nL,1)
-    IF( iocc.gt.0 .and. mod((itime-1),10).eq.0 ) THEN
+    IF( iocc.gt.0 .and. (itime.eq.0 .or. mod((itime-1),10).eq.0) ) THEN
       CALL convert_SLvr(rho_tmp2,rho_tmp2_nL,1)
       CALL convert_SLvr(rho_tmp3,rho_tmp3_nL,1)
     ENDIF
