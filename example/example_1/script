@@ -1,0 +1,11 @@
+#!/bin/sh
+#SBATCH -J Cl_MoSe2_3x3_test
+#SBATCH -n 128
+#SBATCH -t 01:00:00
+#SBATCH -p all
+#SBATCH -o my_job.%j.out
+#SBATCH -e my_job.%j.err
+
+cd ${SLURM_SUBMIT_DIR}
+#mpirun -n 128 ./PEtot_INTEL_BP > output
+mpirun -n 128 ./PEtot_TDDFT_Intel
