@@ -86,10 +86,12 @@ SUBROUTINE TDDFT(xatom, fatom, workr_n, Etot, iforce_cal, ido_rho, &
   ! Force & MD calc
 
   INTEGER :: ireplace, ivlct, ntemp
+  INTEGER :: itherm, nhchain
+  REAL(8), DIMENSION(7) :: qmass, xi, vxi, axi
   REAL(8) :: vxc1, vxc2, uxc1, uxc2
-  REAL(8) :: DesiredTemp, TotalEn, Box, Delt, rtmp
-  REAL(8), DIMENSION(3,matom) :: fatom0, fatom1, DeltR, V_output
-  REAL(8), DIMENSION(matom) :: VX, VY, VZ
+  REAL(8) :: InitTemp, DesiredTemp, TotalEn, Enki, Box, Delt, rtmp
+  REAL(8), DIMENSION(3,matom) :: fatom0, fatom1, DeltR
+  REAL(8), DIMENSION(3,matom) :: Vi, V_output
 
   REAL(8), ALLOCATABLE, DIMENSION(:,:) :: fatom_tmp, fatom_tmp2
 
@@ -200,6 +202,11 @@ SUBROUTINE TDDFT(xatom, fatom, workr_n, Etot, iforce_cal, ido_rho, &
   rho_storage_nL = 0.d0
 !      cc_phase=one
 
+  qmass(1:7) = 0.d0
+  xi(1:7) = 0.d0
+  vxi(1:7) = 0.d0
+  axi(1:7) = 0.d0
+
   gz_1 = 0.d0
   gz_2 = 0.d0
 
@@ -211,20 +218,21 @@ SUBROUTINE TDDFT(xatom, fatom, workr_n, Etot, iforce_cal, ido_rho, &
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  CALL input_TDDFT(totNel, mx, mmn0, iwg_in, imax, rkappa, ivlct, ntemp, VX, VY, VZ, &
+  CALL input_TDDFT(totNel, mx, mmn0, iwg_in, imax, rkappa, &
+                   ivlct, ntemp, Vi, itherm, nhchain, qmass, &
+                   xi, vxi, axi, &
+                   InitTemp, DesiredTemp, &
                    finp_td, ftmp_st, fdx_td, t_timewall)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !  ! Try to heat the system
-!  VX(:) = VX(:) * sqrt(300.d0/4.37d0)
-!  VY(:) = VY(:) * sqrt(300.d0/4.37d0)
-!  VZ(:) = VZ(:) * sqrt(300.d0/4.37d0)
+!  Vi(:,:) = Vi(:,:) * sqrt(300.d0/4.37d0)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   Box = 1.d0
   dt_step = dtMD                                           ! unit fs
   Delt = dtMD / 2.418884D-2                                ! atomic unit, for MD only
-  DesiredTemp = temperature
+  temperature = InitTemp
   kT = temperature * 8.6173324d-5 / Hart
   time = init_time - dt_step
 
@@ -270,12 +278,23 @@ SUBROUTINE TDDFT(xatom, fatom, workr_n, Etot, iforce_cal, ido_rho, &
     WRITE(17,*) "****************************************"
     WRITE(17,FMT1701) "  nbasis           =", mst2
     WRITE(17,FMT1701) "  nbands           =", mmn
-!    IF(mmn0.gt.1) THEN
+    IF(mmn0.gt.1) THEN
       WRITE(17,FMT1701) "  -> nband0        =", mmn0
-!    END IF
+    END IF
     WRITE(17,FMT1703) "  dt(fs)           =", dtMD
     WRITE(17,FMT1701) "  imd              =", iMD
     WRITE(17,FMT1703) "  temperature(K)   =", temperature
+    IF(itherm.eq.1) THEN
+      WRITE(17,'(A)') "  -> Nose-Hoover Chain"
+      WRITE(17,'(A,I)') "     chain length    =", nhchain
+      WRITE(17,'(A)') "     N-H masses(eV^-1), frequences(eV)"
+      DO i = 1, nhchain
+        WRITE(17,'(A,E15.8,1X,E15.8)') "        ", &
+        qmass(i), &
+        sqrt(dble(ntemp)*3.d0*DesiredTemp*8.6173324d-5/qmass(i))
+      ENDDO
+      WRITE(17,'(A,E15.8)') "  -> Final temp(K) =",DesiredTemp
+    END IF
     WRITE(17,FMT1701) "  nelm             =", mscf
     WRITE(17,FMT1702) "  rhodiff(e-)      =", tolrho
     WRITE(17,FMT1702) "  intglerr         =", tolintgl
@@ -989,9 +1008,7 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
       !!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! DEBUG Artificial cooling down
 !      IF( itime.gt.1 .and. mod((itime-1),10).eq.0 ) THEN
-!        VX=0.d0
-!        VY=0.d0
-!        VZ=0.d0
+!        Vi=0.d0
 !        IF(inode.eq.1) WRITE(6,*) " Artificial cooling down at itime=",itime
 !      ENDIF
       !!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1007,8 +1024,9 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
         END IF
 
         CALL MVATOMS(itime, iscale, Delt, Box, xatom, fatom0, fatom1, &
-                     AL, Etot, DesiredTemp, TotalEn, ivlct, ntemp, VX, VY, VZ, &
-                     V_output)
+                     AL, Etot, InitTemp, DesiredTemp, TotalEn, Enki, &
+                     ivlct, ntemp, Vi, V_output, &
+                     itherm, nhchain, qmass, xi, vxi, axi)
 
         string = "atoms moving ends"
         CALL timing_mpi(string,t_0)
@@ -1068,6 +1086,12 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
             WRITE(29,295) iatom(i), (xatom(j,i), j=1,3), (imov_at(j,i), j=1,3)
           END DO
           CLOSE(29)
+          IF(itherm.eq.1) THEN
+            WRITE(29,*) "NH THERMOSTAT"
+            DO i=1,nhchain
+              WRITE(29,'(3(1X,E15.8))') xi(i), vxi(i), axi(i)
+            ENDDO
+          ENDIF
         END IF
 
 295     FORMAT(i4,2x,3(f15.9,1x),2x,3(i2,1x))
@@ -1200,13 +1224,14 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
           WRITE(18) itime-1, time-dt_step
         END IF
         WRITE(18) xatom
-        WRITE(18) VX
-        WRITE(18) VY
-        WRITE(18) VZ
+        WRITE(18) Vi
         WRITE(18) cc_pp0
         WRITE(18) E_st0
         WRITE(18) Ealphat,TS0,E_dDrho0
-        WRITE(18) Delt,Box,DesiredTemp,TotalEn
+        WRITE(18) Delt,Box,InitTemp,DesiredTemp,TotalEn,Enki
+        IF(itherm.eq.1) THEN
+          WRITE(18) xi, vxi, axi
+        ENDIF
         CLOSE(18)
 
 !        OPEN(18,FILE="pulay_st",FORM="unformatted")
@@ -1540,29 +1565,36 @@ SUBROUTINE initial_TDDFT()
       !!!!!!!!!!!!!!!!!!!
       IF(ifatom.eq.2) xatom(:, :) = dxatom_in(:, :, ntime_init+1)
       !!!!!!!!!!!!!!!!!!!
-      READ(18) VX
-      READ(18) VY
-      READ(18) VZ
+      READ(18) Vi
       READ(18) cc_pp0
       READ(18) E_st0
       READ(18) Ealphat,TS0,E_dDrho0
-      READ(18) rtmp,Box,DesiredTemp,TotalEn
+      READ(18) rtmp,Box,InitTemp,DesiredTemp,TotalEn,Enki
+      IF(itherm.eq.1) THEN
+        READ(18) xi, vxi, axi
+      ENDIF
       CLOSE(18)
 
     END IF
 
     CALL mpi_bcast(xatom,3*matom,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    CALL mpi_bcast(VX,matom,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    CALL mpi_bcast(VY,matom,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    CALL mpi_bcast(VZ,matom,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    CALL mpi_bcast(Vi,3*matom,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(cc_pp0,mst*mmn*nkpt*islda,MPI_DOUBLE_COMPLEX,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(E_st0,mst*nkpt*islda,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(Box,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    CALL mpi_bcast(InitTemp,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(DesiredTemp,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(TotalEn,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    CALL mpi_bcast(Enki,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(Ealphat,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(TS0,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(E_dDrho0,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+
+    IF(itherm.eq.1) THEN
+      CALL mpi_bcast(xi,7,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+      CALL mpi_bcast(vxi,7,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+      CALL mpi_bcast(axi,7,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    ENDIF
 
     CALL unfmtIO_r(18,focc_st,occ0,mst*nkpt*islda,0,1)
 
