@@ -99,11 +99,11 @@ subroutine bandshift0(xatom, iatom, AL)
                    (AL(3, 1) * rtmp3(1) + AL(3, 2) * rtmp3(2) + AL(3, 3) * rtmp3(3))**2
   dis_qd_CtoS(2) = sqrt(dis_qd_CtoS(2))
 
-  diameter = dis_qd_CtoS(1) + dis_qd_CtoS(2) + 2.d0 * 1.84d0 / Bohr
+  diameter = dis_qd_CtoS(1) + dis_qd_CtoS(2) + 1.d0 * 1.84d0 / Bohr
   !e_SC = 1.d0 + (e_SC_bulk - 1.d0) / (1.d0 + (7.5 / diameter / Bohr)**1.2d0)
 
-  !e_SC = 4.85d0
-  e_SC = 4.5d0
+  !e_SC = 4.71d0
+  e_SC = 4.35d0
 
   dP = 0.d0
   do i = 0, 100

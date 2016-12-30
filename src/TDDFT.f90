@@ -1372,7 +1372,7 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
           t_left = t_timewall - (t_step1 - t_start_petot)
           step_avail = floor(t_left / t_loop_ave)
           WRITE(17,'(A,I10)') " Expected to end at time step   :", step_avail + itime - 1
-          IF(step_avail.le.10.and.itime.lt.(ntime_init+ntime-1)) THEN
+          IF(step_avail.le.4.and.itime.lt.(ntime_init+ntime-1)) THEN
           ! almost reach timewall, so just do one more step
             ntime = itime - ntime_init + 1
             write(17,*) "Do one more time step, then stop"
