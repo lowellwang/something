@@ -1,5 +1,5 @@
 subroutine MVATOMS(itime, iscale, Delt, Box, xatom, fatom0, fatom1, &
-                   AL, Etot, InitTemp, DesiredTemp, TotalEn, Enki, &
+                   AL, Etot, InitTemp, DesiredTemp, TotalEn, Ekin, &
                    ivlct, ntemp, Vi, V_output, &
                    itherm, nhchain, qmass, xi, vxi, axi)
 
@@ -15,12 +15,12 @@ subroutine MVATOMS(itime, iscale, Delt, Box, xatom, fatom0, fatom1, &
   real(8), dimension(3,matom) :: xatom, fatom0, fatom1, Vi, V_output
   real(8), dimension(3,3)     :: AL
   real(8), dimension(7)       :: qmass, xi, vxi, axi
-  real(8)                     :: InitTemp, DesiredTemp, TotalEn, Etot, Enki, Box, Delt
+  real(8)                     :: InitTemp, DesiredTemp, TotalEn, Etot, Ekin, Box, Delt
 
   integer                     :: Iseed, istep
   real(8)                     :: delth, temp0, temp1
   real(8), dimension(3)       :: xx
-  real(8), parameter          :: HFs2vB2M = 27.211396D0
+  real(8), parameter          :: Hart = 27.211396D0
   real(8), parameter          :: Boltz = 0.023538D0 / 273.15D0 / 27.211396D0
 
   if(inode_tot.eq.1) then
@@ -32,7 +32,7 @@ subroutine MVATOMS(itime, iscale, Delt, Box, xatom, fatom0, fatom1, &
   ! init MD
     Iseed=12345
     call VVMDinit(Iseed, inode_tot, iscale, InitTemp, &
-                  Etot, TotalEn, Enki, ivlct, ntemp, Vi, V_output)
+                  Etot, TotalEn, Ekin, ivlct, ntemp, Vi, V_output)
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   elseif(itime.gt.1) then
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -43,7 +43,7 @@ subroutine MVATOMS(itime, iscale, Delt, Box, xatom, fatom0, fatom1, &
       Vi(:,i) = Vi(:,i) - delth * fatom0(:,i) / MDatom(i)
     enddo
     call VVMD(istep, inode_tot, iscale, &
-              Etot, TotalEn, Enki, ntemp, Vi, V_output)
+              Etot, TotalEn, Ekin, ntemp, Vi, V_output)
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   endif
 
@@ -56,10 +56,10 @@ subroutine MVATOMS(itime, iscale, Delt, Box, xatom, fatom0, fatom1, &
   enddo
 
   if(itherm.eq.1) then
-    temp0 = 2.d0 * Enki / (3.d0 * DBLE(ntemp) * Boltz * HFs2vB2M)
+    temp0 = 2.d0 * Ekin / (3.d0 * DBLE(ntemp) * Boltz)
     call nose_hoover_chain(DesiredTemp, qmass, nhchain, Delt, ntemp, &
-                           xi, vxi, axi, Enki, Vi)
-    temp1 = 2.d0 * Enki / (3.d0 * DBLE(ntemp) * Boltz * HFs2vB2M)
+                           xi, vxi, axi, Ekin, Vi)
+    temp1 = 2.d0 * Ekin / (3.d0 * DBLE(ntemp) * Boltz)
     if(inode_tot.eq.1) then
       write(6,*) '*********************************'
       write(6,*) 'Thermostat: Nose-Hoover chain'

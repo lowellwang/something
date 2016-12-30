@@ -89,7 +89,7 @@ SUBROUTINE TDDFT(xatom, fatom, workr_n, Etot, iforce_cal, ido_rho, &
   INTEGER :: itherm, nhchain
   REAL(8), DIMENSION(7) :: qmass, xi, vxi, axi
   REAL(8) :: vxc1, vxc2, uxc1, uxc2
-  REAL(8) :: InitTemp, DesiredTemp, TotalEn, Enki, Box, Delt, rtmp
+  REAL(8) :: InitTemp, DesiredTemp, TotalEn, Ekin, Box, Delt, rtmp
   REAL(8), DIMENSION(3,matom) :: fatom0, fatom1, DeltR
   REAL(8), DIMENSION(3,matom) :: Vi, V_output
 
@@ -1038,7 +1038,7 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
         END IF
 
         CALL MVATOMS(itime, iscale, Delt, Box, xatom, fatom0, fatom1, &
-                     AL, Etot, InitTemp, DesiredTemp, TotalEn, Enki, &
+                     AL, Etot, InitTemp, DesiredTemp, TotalEn, Ekin, &
                      ivlct, ntemp, Vi, V_output, &
                      itherm, nhchain, qmass, xi, vxi, axi)
 
@@ -1242,7 +1242,7 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
         WRITE(18) cc_pp0
         WRITE(18) E_st0
         WRITE(18) Ealphat,TS0,E_dDrho0
-        WRITE(18) Delt,Box,InitTemp,DesiredTemp,TotalEn,Enki
+        WRITE(18) Delt,Box,InitTemp,DesiredTemp,TotalEn,Ekin
         IF(itherm.eq.1) THEN
           WRITE(18) xi, vxi, axi
         ENDIF
@@ -1583,7 +1583,7 @@ SUBROUTINE initial_TDDFT()
       READ(18) cc_pp0
       READ(18) E_st0
       READ(18) Ealphat,TS0,E_dDrho0
-      READ(18) rtmp,Box,InitTemp,DesiredTemp,TotalEn,Enki
+      READ(18) rtmp,Box,InitTemp,DesiredTemp,TotalEn,Ekin
       IF(itherm.eq.1) THEN
         READ(18) xi, vxi, axi
       ENDIF
@@ -1599,7 +1599,7 @@ SUBROUTINE initial_TDDFT()
     CALL mpi_bcast(InitTemp,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(DesiredTemp,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(TotalEn,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    CALL mpi_bcast(Enki,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    CALL mpi_bcast(Ekin,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(Ealphat,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(TS0,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(E_dDrho0,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)

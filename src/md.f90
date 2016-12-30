@@ -1,4 +1,4 @@
-subroutine VVMDinit(Iseed, myid, iscale, InitTemp, Etot, TotalEn, Enki, &
+subroutine VVMDinit(Iseed, myid, iscale, InitTemp, Etot, TotalEn, Ekin, &
                     ivlct, ntemp, Vi, V_output)
 
   use data
@@ -9,14 +9,14 @@ subroutine VVMDinit(Iseed, myid, iscale, InitTemp, Etot, TotalEn, Enki, &
 
   integer                     :: Iseed, myid, iscale, ivlct, ntemp
   real(8), dimension(3,matom) :: Vi, V_output
-  real(8)                     :: InitTemp, Etot, TotalEn, Enki
+  real(8)                     :: InitTemp, Etot, TotalEn, Ekin
 
   integer               :: i, j, k
   real(8), dimension(3) :: vc, vd
   real(8)               :: mv2, Temp, total_mass, scaling, v_width
-  real(8)               :: Enki_imp
+  real(8)               :: Ekin_imp
   real(8), external     :: RANG
-  real(8), parameter    :: HFs2vB2M = 27.211396D0
+  real(8), parameter    :: Hart = 27.211396D0
   real(8), parameter    :: Boltz = 0.023538D0 / 273.15D0 / 27.211396D0
 
   if(ivlct.le.0) then
@@ -119,32 +119,32 @@ subroutine VVMDinit(Iseed, myid, iscale, InitTemp, Etot, TotalEn, Enki, &
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! calc current temperature
-  Enki = 0.5d0 * mv2 * HFs2vB2M
-  Temp = 2.d0 * Enki / (3.d0 * DBLE(ntemp) * Boltz * HFs2vB2M)
+  Ekin = 0.5d0 * mv2
+  Temp = 2.d0 * Ekin / (3.d0 * DBLE(ntemp) * Boltz)
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! calc incidence ion kinetic energy, if they exist
-  Enki_imp = 0.d0
+  Ekin_imp = 0.d0
   if(ntemp.lt.natom) then
     do i = ntemp + 1, natom
-      Enki_imp = Enki_imp + MDatom(i) * (Vi(1,i)**2 + Vi(2,i)**2 + Vi(3,i)**2)
+      Ekin_imp = Ekin_imp + MDatom(i) * (Vi(1,i)**2 + Vi(2,i)**2 + Vi(3,i)**2)
     enddo
-    Enki_imp = 0.5d0 * Enki_imp * HFs2vB2M
+    Ekin_imp = 0.5d0 * Ekin_imp
   endif
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! output
   V_output(:,:) = Vi(:,:)
-  TotalEn = Etot * HFs2vB2M + Enki + Enki_imp
+  TotalEn = Etot + Ekin + Ekin_imp
   if(myid.eq.1) then
     write(6,*) '*********************************'
-    write(6,*) "IniTotEn,Etot,Enki,Enki_imp"
-    write(6,*) TotalEn, Etot*HFs2vB2M, Enki, Enki_imp
+    write(6,*) "IniTotEn,Etot,Ekin,Ekin_imp"
+    write(6,*) TotalEn*Hart, Etot*Hart, Ekin*Hart, Ekin_imp*Hart
     write(6,*) "Now Temp=", Temp, "Scaling=", scaling
 
     open(11,file='plot_MD.txt',access='append')
     write(11,'(A)') " Time,             E_tot,            E_elec,             E_ion,         E_ion_imp,              Temp,           Scaling"
-    write(11,666)   0, TotalEn, Etot*HFs2vB2M, Enki, Enki_imp, Temp, scaling
+    write(11,666)   0, TotalEn*Hart, Etot*Hart, Ekin*Hart, Ekin_imp*Hart, Temp, scaling
     close(11)
 666 format(i5,1x,12(f18.9,1x))
   endif
@@ -153,7 +153,7 @@ subroutine VVMDinit(Iseed, myid, iscale, InitTemp, Etot, TotalEn, Enki, &
 
 end
 
-subroutine VVMD(istep, myid, iscale, Etot, TotalEn, Enki, &
+subroutine VVMD(istep, myid, iscale, Etot, TotalEn, Ekin, &
                 ntemp, Vi, V_output)
 
   use data
@@ -164,13 +164,13 @@ subroutine VVMD(istep, myid, iscale, Etot, TotalEn, Enki, &
 
   integer                     :: istep, myid, iscale, ntemp
   real(8), dimension(3,matom) :: Vi, V_output
-  real(8)                     :: Etot, TotalEn, Enki
+  real(8)                     :: Etot, TotalEn, Ekin
 
   integer               :: i, j, k
   real(8), dimension(3) :: vc, vd, vt
   real(8)               :: mv2, Temp, total_mass, scaling
-  real(8)               :: Enki_imp, Enki_old
-  real(8), parameter    :: HFs2vB2M = 27.211396D0
+  real(8)               :: Ekin_imp, Ekin_old
+  real(8), parameter    :: Hart = 27.211396D0
   real(8), parameter    :: Boltz = 0.023538D0 / 273.15D0 / 27.211396D0
 
   if(ntemp.eq.1) goto 110
@@ -195,27 +195,27 @@ subroutine VVMD(istep, myid, iscale, Etot, TotalEn, Enki, &
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! calc incidence ion kinetic energy, if they exist
-  Enki_imp = 0.d0
+  Ekin_imp = 0.d0
   if(ntemp.lt.natom) then
     do i = ntemp + 1, natom
-      Enki_imp = Enki_imp + MDatom(i) * (Vi(1,i)**2 + Vi(2,i)**2 + Vi(3,i)**2)
+      Ekin_imp = Ekin_imp + MDatom(i) * (Vi(1,i)**2 + Vi(2,i)**2 + Vi(3,i)**2)
     enddo
-    Enki_imp = 0.5d0 * Enki_imp * HFs2vB2M
+    Ekin_imp = 0.5d0 * Ekin_imp
   endif
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! calc energies, temp and scaling factor
-  Enki_old = 0.5d0 * mv2 * HFs2vB2M
-  temperature = 2.d0 * Enki_old / (3.d0 * DBLE(ntemp) * Boltz * HFs2vB2M)
-  Enki = TotalEn - Etot * HFs2vB2M - Enki_imp
-  scaling = dabs(Enki / Enki_old)
+  Ekin_old = 0.5d0 * mv2
+  temperature = 2.d0 * Ekin_old / (3.d0 * DBLE(ntemp) * Boltz)
+  Ekin = TotalEn - Etot - Ekin_imp
+  scaling = dabs(Ekin / Ekin_old)
 
   if(myid.eq.1) then
     write(6,*) '*********************************'
     write(6,*) 'Time step', istep
     write(6,*) 'Before scaling'
     write(6,*) '*********************************'
-    write(6,*) 'Enki,Should', Enki_old, Enki
+    write(6,*) 'Ekin,Should', Ekin_old*Hart, Ekin*Hart
     write(6,*) 'Now Temp=', temperature, 'Scaling=', scaling
     write(6,*) "total momentum drift:"
     write(6,*) vc(1), vc(2), vc(3)
@@ -232,9 +232,9 @@ subroutine VVMD(istep, myid, iscale, Etot, TotalEn, Enki, &
   enddo
   vt(:) = -vt(:) / total_mass
 
-  Enki = 0.5d0 * mv2 * HFs2vB2M
-  temperature = 2.d0 * Enki / (3.d0 * DBLE(ntemp) * Boltz * HFs2vB2M)
-  TotalEn = Etot * HFs2vB2M + Enki + Enki_imp
+  Ekin = 0.5d0 * mv2
+  temperature = 2.d0 * Ekin / (3.d0 * DBLE(ntemp) * Boltz)
+  TotalEn = Etot + Ekin + Ekin_imp
   V_output(:,:) = Vi(:,:)
 
   if(myid.eq.1) then
@@ -242,13 +242,13 @@ subroutine VVMD(istep, myid, iscale, Etot, TotalEn, Enki, &
     if(iscale.gt.0) write(6,*) 'After scaling'
     if(iscale.le.0) write(6,*) 'No scaling'
     write(6,*) '*********************************'
-    write(6,*) 'Enki', Enki
+    write(6,*) 'Ekin', Ekin*Hart
     write(6,*) 'Now Temp=', temperature
     write(6,*) "total momentum drift:"
     write(6,*) vt(1), vt(2), vt(3)
 
     open(11,file='plot_MD.txt',access='append')
-    write(11,666) istep,TotalEn,Etot*HFs2vB2M,Enki,Enki_imp,temperature,scaling
+    write(11,666) istep, TotalEn*Hart, Etot*Hart, Ekin*Hart, Ekin_imp*Hart, temperature, scaling
     close(11)
 666 format(i5,1x,12(f18.9,1x))
   endif
@@ -257,7 +257,7 @@ subroutine VVMD(istep, myid, iscale, Etot, TotalEn, Enki, &
 
 end
 
-subroutine nose_hoover_chain(DesiredTemp, Q, M, dt, ntemp, xi, vxi, axi, Enki, Vi)
+subroutine nose_hoover_chain(DesiredTemp, Q, M, dt, ntemp, xi, vxi, axi, Ekin, Vi)
 
   use data
   use data_TDDFT
@@ -266,13 +266,13 @@ subroutine nose_hoover_chain(DesiredTemp, Q, M, dt, ntemp, xi, vxi, axi, Enki, V
   include 'param.escan_real_f90'
 
   integer                     :: M, ntemp
-  real(8)                     :: dt, Enki, DesiredTemp
+  real(8)                     :: dt, Ekin, DesiredTemp
   real(8), dimension(7)       :: Q, xi, vxi, axi
   real(8), dimension(3,matom) :: Vi
-  real(8), parameter          :: HFs2vB2M = 27.211396D0
+  real(8), parameter          :: Hart = 27.211396D0
   real(8), parameter          :: Boltz = 0.023538D0 / 273.15D0 / 27.211396D0
 
-  integer                     :: i, j, k, nomega, nf
+  integer                     :: i, j, k, nomega, ntick, nf
   real(8)                     :: dts, dts2, dts4, dts8, aa, kT
   real(8), dimension(7)       :: omega
 
@@ -285,51 +285,44 @@ subroutine nose_hoover_chain(DesiredTemp, Q, M, dt, ntemp, xi, vxi, axi, Enki, V
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   kT = DesiredTemp * Boltz
   nf = 3 * ntemp
+  ntick = int(dt * 2.418884D-2 / 1.d-2)
+  if(inode_tot.eq.1) write(6,*) "kt, nf, ntick, tmpend", kT, nf, ntick, DesiredTemp
 
+  do k = 1, ntick
   do j = 1, nomega
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    dts = omega(j) * dt
+    dts = omega(j) * dt / dble(ntick)
     dts2 = dts / 2.d0
     dts4 = dts / 4.d0
     dts8 = dts / 8.d0
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ! calc thermostat acceleration
-    ! axi = d^2(xi)/dt^2
-    axi(1) = (2.d0*Enki - nf*kT) / Q(1)
-    do i = 2, M
+    do i = M, 2, -1
       axi(i) = (Q(i-1)*vxi(i-1)*vxi(i-1) - kT) / Q(i)
+      vxi(i) = vxi(i) + dts4*axi(i)
+      vxi(i-1) = vxi(i-1) * exp(-dts8*vxi(i))
     enddo
+    axi(1) = (2.d0*Ekin - nf*kT) / Q(1)
+    vxi(1) = vxi(1) + dts4*axi(1)
+    vxi(1) = vxi(1) * exp(-dts8*vxi(2))
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ! update thermostat velocity
-    ! vxi = d(xi)/dt
-    vxi(M) = vxi(M) + dts4*axi(M)
-    do i = 1, M-1
-      aa = exp(-dts8 * vxi(M+1-i))
-      vxi(M-i) = (vxi(M-i) + dts4*axi(M-i)) * aa
-    enddo
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ! update particle velocity
     aa = exp(-dts2 * vxi(1))
     Vi(:,:) = Vi(:,:) * aa
+    Ekin = Ekin * aa * aa
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ! update thermostat position xi
-    xi(1:M) = xi(1:M) + dts2 * vxi(1:M)
+    do i = 1, M
+      xi(i) = xi(i) + dts2*vxi(i)
+    enddo
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ! update ion kinetic energy
-    Enki = Enki * aa * aa
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ! update axi and vxi
-    axi(1) = (2.d0*Enki - nf*kT) / Q(1)
+    vxi(1) = vxi(1) * exp(-dts8*vxi(2))
+    axi(1) = (2.d0*Ekin - nf*kT) / Q(1)
+    vxi(1) = vxi(1) + dts4*axi(1)
     do i = 2, M
+      vxi(i-1) = vxi(i-1) * exp(-dts8*vxi(i))
       axi(i) = (Q(i-1)*vxi(i-1)*vxi(i-1) - kT) / Q(i)
+      vxi(i) = vxi(i) + dts4*axi(i)
     enddo
-    do i = 1, M-1
-      aa = exp(-dts8 * vxi(i+1))
-      vxi(i) = (vxi(i) + dts4*axi(i)) * aa
-      axi(i+1) = (Q(i)*vxi(i)*vxi(i) - kT) / Q(i+1)
-    enddo
-    vxi(M) = vxi(M) + dts4 * axi(M)
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  enddo
   enddo
 
   return
