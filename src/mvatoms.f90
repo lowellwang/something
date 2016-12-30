@@ -7,7 +7,8 @@ subroutine MVATOMS(itime, iscale, Delt, Box, xatom, fatom0, fatom1, &
   use load_data
   use data
   use data_TDDFT
-  implicit double precision (a-h,o-z)
+  !implicit double precision (a-h,o-z)
+  implicit none
   include 'mpif.h'
   include 'param.escan_real_f90'
 
@@ -17,7 +18,7 @@ subroutine MVATOMS(itime, iscale, Delt, Box, xatom, fatom0, fatom1, &
   real(8), dimension(7)       :: qmass, xi, vxi, axi
   real(8)                     :: InitTemp, DesiredTemp, TotalEn, Etot, Ekin, Box, Delt
 
-  integer                     :: Iseed, istep
+  integer                     :: Iseed, istep, i, j, k, ierr
   real(8)                     :: delth, temp0, temp1
   real(8), dimension(3)       :: xx
   real(8), parameter          :: Hart = 27.211396D0

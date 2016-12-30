@@ -143,10 +143,10 @@ subroutine VVMDinit(Iseed, myid, iscale, InitTemp, Etot, TotalEn, Ekin, &
     write(6,*) "Now Temp=", Temp, "Scaling=", scaling
 
     open(11,file='plot_MD.txt',access='append')
-    write(11,'(A)') " Time,             E_tot,            E_elec,             E_ion,         E_ion_imp,              Temp,           Scaling"
+    write(11,'(A)') "  Time,             E_tot,            E_elec,             E_ion,         E_ion_imp,              Temp,           Scaling"
     write(11,666)   0, TotalEn*Hart, Etot*Hart, Ekin*Hart, Ekin_imp*Hart, Temp, scaling
     close(11)
-666 format(i5,1x,12(f18.9,1x))
+666 format(i6,1x,12(f18.9,1x))
   endif
 
   return
@@ -250,7 +250,7 @@ subroutine VVMD(istep, myid, iscale, Etot, TotalEn, Ekin, &
     open(11,file='plot_MD.txt',access='append')
     write(11,666) istep, TotalEn*Hart, Etot*Hart, Ekin*Hart, Ekin_imp*Hart, temperature, scaling
     close(11)
-666 format(i5,1x,12(f18.9,1x))
+666 format(i6,1x,12(f18.9,1x))
   endif
 
   return
@@ -278,15 +278,19 @@ subroutine nose_hoover_chain(DesiredTemp, Q, M, dt, ntemp, xi, vxi, axi, Ekin, V
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! Yoshida Suzuki integration scheme
+  ! nomega=3 && ntick=4 will be good enough in most cases
+  ! Notice that omega changes with nomega
+  ! If more stable integration is required, try nomega=5 or larger ntick
   nomega = 3
   omega(1) = 1.d0 / (2.d0 - 2.d0**(1.d0/3.d0))
   omega(2) = 1.d0 - 2.d0 * omega(1)
   omega(3) = omega(1)
+  ntick = 4
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   kT = DesiredTemp * Boltz
   nf = 3 * ntemp
-  ntick = int(dt * 2.418884D-2 / 1.d-2)
-  if(inode_tot.eq.1) write(6,*) "kt, nf, ntick, tmpend", kT, nf, ntick, DesiredTemp
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  if(inode_tot.eq.1) write(6,*) "nf, nomega, ntick, tmpend", nf, nomega, ntick, DesiredTemp
 
   do k = 1, ntick
   do j = 1, nomega
