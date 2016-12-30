@@ -12,8 +12,8 @@ SUBROUTINE input_TDDFT(tot, m, mmn0, iwg_in, imax, rkappa, &
   INCLUDE 'mpif.h'
   INCLUDE 'param.escan_real_f90'
 
-  INTEGER :: m,mmn0,ierr,ierr2,iline,imax,i,j,k,l,l2,iwg_in,ivlct,ntemp,itmp
-  INTEGER :: itherm, nhchain, ierr3, ierr4
+  INTEGER :: m,mmn0,ierr,ierr2,ierr3,iline,imax,i,j,k,l,l2,iwg_in,ivlct,ntemp,itmp
+  INTEGER :: itherm, nhchain
   REAL(8), DIMENSION(7) :: qmass, xi, vxi, axi
   REAL(8) :: InitTemp, DesiredTemp
   REAL(8) :: rtmp(10),tot,rkappa(3),t_timewall
@@ -26,6 +26,9 @@ SUBROUTINE input_TDDFT(tot, m, mmn0, iwg_in, imax, rkappa, &
   iline = 0
   bmass = .false.
   bkappa = .true.
+  ierr = 0
+  ierr2 = 0
+  ierr3 = 0
 
   mst2 = -1
   mmn = -1
@@ -171,22 +174,16 @@ SUBROUTINE input_TDDFT(tot, m, mmn0, iwg_in, imax, rkappa, &
     if(nhchain.gt.7) nhchain=7
 
   elseif(index(line,'qmass').ne.0) then
-    iline=iline+1
-    read(14,'(a)',iostat=ierr2,end=666,err=666) line
-    ierr3=1
-    if(nhchain.le.0) goto 666
-    read(line,*,iostat=ierr3) (rtmp(j),j=1,nhchain)
-    if(ierr3.ne.0) goto 666
-    qmass(1:nhchain)=rtmp(1:nhchain)
+    read(ctmp,*) qmass(1)
 
   elseif(index(line,'thermostat').ne.0) then
-    ierr4 = 1
+    ierr3 = 1
     if(inode_tot.eq.1) &
       write(6,*) "Read thermostat from "//trim(adjustl(finp_td))
     if(nhchain.le.0) goto 666
     do i = 1, nhchain
       iline=iline+1
-      read(14,*,iostat=ierr4,end=666,err=666) xi(i), vxi(i), axi(i)
+      read(14,*,iostat=ierr3,end=666,err=666) xi(i), vxi(i), axi(i)
       if(inode_tot.eq.1) &
         write(6,'(3(1X,E15.8))') xi(i), vxi(i), axi(i)
     end do
@@ -197,10 +194,10 @@ SUBROUTINE input_TDDFT(tot, m, mmn0, iwg_in, imax, rkappa, &
   elseif(index(line,'ntmprtr').ne.0) then
     read(ctmp,*) ntemp
 
-  elseif(index(line,'tmprtr').ne.0) then
+  elseif(index(line,'tmpst').ne.0) then
     read(ctmp,*) InitTemp
 
-  elseif(index(line,'tmprtr_end').ne.0) then
+  elseif(index(line,'tmped').ne.0) then
     read(ctmp,*) DesiredTemp
 
   elseif(index(line,'mdmass').ne.0) then
@@ -277,27 +274,12 @@ SUBROUTINE input_TDDFT(tot, m, mmn0, iwg_in, imax, rkappa, &
    stop
 
   elseif(inode_tot.eq.1.and.ierr3.ne.0.and.nhchain.le.0) then
-   write(6,*) "--ERROR: Cannot find nhchain before qmass"
-   call MPI_abort(MPI_COMM_WORLD,ierr)
-   stop
-
-  elseif(inode_tot.eq.1.and.ierr3.ne.0.and.nhchain.gt.0) then
-   write(6,*) "--ERROR: Cannot read qmass"
-   call MPI_abort(MPI_COMM_WORLD,ierr)
-   stop
-
-  elseif(inode_tot.eq.1.and.ierr4.ne.0.and.nhchain.le.0) then
    write(6,*) "--ERROR: Cannot find nhchain before thermostat"
    call MPI_abort(MPI_COMM_WORLD,ierr)
    stop
 
-  elseif(inode_tot.eq.1.and.ierr4.ne.0.and.nhchain.gt.0) then
+  elseif(inode_tot.eq.1.and.ierr3.ne.0.and.nhchain.gt.0) then
    write(6,*) "--ERROR: Cannot read thermostat"
-   call MPI_abort(MPI_COMM_WORLD,ierr)
-   stop
-
-  else
-   write(6,*) "--ERROR: Unknown error in line",iline
    call MPI_abort(MPI_COMM_WORLD,ierr)
    stop
 
@@ -323,6 +305,9 @@ SUBROUTINE input_TDDFT(tot, m, mmn0, iwg_in, imax, rkappa, &
 
   if(iMD.eq.11) then
     itherm=1
+    do i=2,7
+      qmass(i) = qmass(1)/3.d0/dble(ntemp)
+    enddo
   endif
 
   if(itherm.eq.1.and.nhchain.le.0.and.inode_tot.eq.1) then

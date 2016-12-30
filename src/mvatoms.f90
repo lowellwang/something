@@ -20,8 +20,8 @@ subroutine MVATOMS(itime, iscale, Delt, Box, xatom, fatom0, fatom1, &
   integer                     :: Iseed, istep
   real(8)                     :: delth, temp0, temp1
   real(8), dimension(3)       :: xx
-  real(8), parameter          :: HFs2vB2M = 0.930895D0
-  real(8), parameter          :: Hdt = 0.023538D0 / 273.15D0 / 27.211396D0
+  real(8), parameter          :: HFs2vB2M = 27.211396D0
+  real(8), parameter          :: Boltz = 0.023538D0 / 273.15D0 / 27.211396D0
 
   if(inode_tot.eq.1) then
     write(6,*) "START MD"
@@ -63,6 +63,10 @@ subroutine MVATOMS(itime, iscale, Delt, Box, xatom, fatom0, fatom1, &
     if(inode_tot.eq.1) then
       write(6,*) '*********************************'
       write(6,*) 'Thermostat: Nose-Hoover chain'
+      write(6,*) qmass
+      write(6,*) xi
+      write(6,*) vxi
+      write(6,*) axi
       write(6,'(A,I7,A,E11.4,A,E11.4)') &
       '  itime = ', itime-1, ", T0 = ", temp0, ", T1 = ", temp1
     endif

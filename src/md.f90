@@ -36,7 +36,11 @@ subroutine VVMDinit(Iseed, myid, iscale, InitTemp, Etot, TotalEn, Enki, &
     enddo
 
     ! scale velocities according to temperature, for the first time
-    scaling = dabs(InitTemp * Boltz * 3.d0 * DBLE(ntemp) / mv2)
+    if(InitTemp.le.0.d0) then
+      scaling = 0.d0
+    else
+      scaling = dabs(InitTemp * Boltz * 3.d0 * DBLE(ntemp) / mv2)
+    endif
     if(myid.eq.1) then
       write(6,*) '*********************************'
       write(6,*) "Initialize velocities: first scaling is"
@@ -95,7 +99,11 @@ subroutine VVMDinit(Iseed, myid, iscale, InitTemp, Etot, TotalEn, Enki, &
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! scale velocities for the second time
   if(ivlct.le.0) then
-    scaling = dabs(InitTemp * Boltz * 3.d0 * DBLE(ntemp) / mv2)
+    if(InitTemp.le.0.d0) then
+      scaling = 0.d0
+    else
+      scaling = dabs(InitTemp * Boltz * 3.d0 * DBLE(ntemp) / mv2)
+    endif
     if(myid.eq.1) then
       write(6,*) "Initialize velocities: second scaling is"
       write(6,*) scaling
@@ -264,8 +272,8 @@ subroutine nose_hoover_chain(DesiredTemp, Q, M, dt, ntemp, xi, vxi, axi, Enki, V
   real(8), parameter          :: HFs2vB2M = 27.211396D0
   real(8), parameter          :: Boltz = 0.023538D0 / 273.15D0 / 27.211396D0
 
-  integer                     :: i, j, k, nomega
-  real(8)                     :: dts, dts2, dts4, dts8, aa
+  integer                     :: i, j, k, nomega, nf
+  real(8)                     :: dts, dts2, dts4, dts8, aa, kT
   real(8), dimension(7)       :: omega
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -275,6 +283,8 @@ subroutine nose_hoover_chain(DesiredTemp, Q, M, dt, ntemp, xi, vxi, axi, Enki, V
   omega(2) = 1.d0 - 2.d0 * omega(1)
   omega(3) = omega(1)
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  kT = DesiredTemp * Boltz
+  nf = 3 * ntemp
 
   do j = 1, nomega
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -285,17 +295,17 @@ subroutine nose_hoover_chain(DesiredTemp, Q, M, dt, ntemp, xi, vxi, axi, Enki, V
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! calc thermostat acceleration
     ! axi = d^2(xi)/dt^2
-    axi(1) = (Enki * 2.d0 - DesiredTemp * Boltz * 3.d0 * DBLE(ntemp)) / Q(1)
+    axi(1) = (2.d0*Enki - nf*kT) / Q(1)
     do i = 2, M
-      axi(i) = (Q(i-1) * vxi(i-1) * vxi(i-1) - DesiredTemp * Boltz) / Q(i)
+      axi(i) = (Q(i-1)*vxi(i-1)*vxi(i-1) - kT) / Q(i)
     enddo
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! update thermostat velocity
     ! vxi = d(xi)/dt
-    vxi(M) = vxi(M) + dts4 * axi(M)
+    vxi(M) = vxi(M) + dts4*axi(M)
     do i = 1, M-1
       aa = exp(-dts8 * vxi(M+1-i))
-      vxi(M-i) = vxi(M-i) * aa * aa + dts4 * axi(M-i) * aa
+      vxi(M-i) = (vxi(M-i) + dts4*axi(M-i)) * aa
     enddo
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! update particle velocity
@@ -305,18 +315,18 @@ subroutine nose_hoover_chain(DesiredTemp, Q, M, dt, ntemp, xi, vxi, axi, Enki, V
     ! update thermostat position xi
     xi(1:M) = xi(1:M) + dts2 * vxi(1:M)
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ! update thermostat acceleration axi
+    ! update ion kinetic energy
     Enki = Enki * aa * aa
-    axi(1) = (Enki * 2.d0 - DesiredTemp * Boltz * 3.d0 * DBLE(ntemp)) / Q(1)
-    do i = 2, M
-      axi(i) = (Q(i-1) * vxi(i-1) * vxi(i-1) - DesiredTemp * Boltz) / Q(i)
-    enddo
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ! update thermostat velocity
+    ! update axi and vxi
+    axi(1) = (2.d0*Enki - nf*kT) / Q(1)
+    do i = 2, M
+      axi(i) = (Q(i-1)*vxi(i-1)*vxi(i-1) - kT) / Q(i)
+    enddo
     do i = 1, M-1
       aa = exp(-dts8 * vxi(i+1))
-      vxi(i) = vxi(i) * aa * aa + dts4 * axi(i) * aa
-      axi(i+1) = (Q(i) * vxi(i) * vxi(i) - DesiredTemp * Boltz) / Q(i+1)
+      vxi(i) = (vxi(i) + dts4*axi(i)) * aa
+      axi(i+1) = (Q(i)*vxi(i)*vxi(i) - kT) / Q(i+1)
     enddo
     vxi(M) = vxi(M) + dts4 * axi(M)
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

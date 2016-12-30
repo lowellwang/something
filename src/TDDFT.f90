@@ -231,7 +231,8 @@ SUBROUTINE TDDFT(xatom, fatom, workr_n, Etot, iforce_cal, ido_rho, &
 
   Box = 1.d0
   dt_step = dtMD                                           ! unit fs
-  Delt = dtMD / 2.418884D-2                                ! atomic unit, for MD only
+  Delt = dtMD / 2.418884D-2                                ! a.u.
+  qmass = qmass * Hart                                     ! a.u.
   temperature = InitTemp
   kT = temperature * 8.6173324d-5 / Hart
   time = init_time - dt_step
@@ -274,58 +275,71 @@ SUBROUTINE TDDFT(xatom, fatom, workr_n, Etot, iforce_cal, ido_rho, &
     OPEN(17, FILE=frep_td)
     REWIND(17)
 
-    WRITE(17,*) "Input parameters"
-    WRITE(17,*) "****************************************"
-    WRITE(17,FMT1701) "  nbasis           =", mst2
-    WRITE(17,FMT1701) "  nbands           =", mmn
+    WRITE(17,*)       "Input parameters"
+    WRITE(17,*)       "*********************************************"
+    WRITE(17,FMT1701) "  nbasis                =", mst2
+    WRITE(17,FMT1701) "  nbands                =", mmn
+
     IF(mmn0.gt.1) THEN
-      WRITE(17,FMT1701) "  -> nband0        =", mmn0
+    WRITE(17,FMT1701) "  -> nband0             =", mmn0
     END IF
-    WRITE(17,FMT1703) "  dt(fs)           =", dtMD
-    WRITE(17,FMT1701) "  imd              =", iMD
-    WRITE(17,FMT1703) "  temperature(K)   =", temperature
+
+    WRITE(17,FMT1703) "  dt(fs)                =", dtMD
+    WRITE(17,FMT1701) "  imd                   =", iMD
+    WRITE(17,FMT1703) "  temperature(K)        =", temperature
+
     IF(itherm.eq.1) THEN
-      WRITE(17,'(A)') "  -> Nose-Hoover Chain"
-      WRITE(17,'(A,I)') "     chain length    =", nhchain
-      WRITE(17,'(A)') "     N-H masses(eV^-1), frequences(eV)"
-      DO i = 1, nhchain
-        WRITE(17,'(A,E15.8,1X,E15.8)') "        ", &
-        qmass(i), &
-        sqrt(dble(ntemp)*3.d0*DesiredTemp*8.6173324d-5/qmass(i))
-      ENDDO
-      WRITE(17,'(A,E15.8)') "  -> Final temp(K) =",DesiredTemp
+    WRITE(17,'(A)')   "  -> Nose-Hoover Chain:"
+    WRITE(17,FMT1701) "  -> chain length       =", nhchain
+    WRITE(17,'(A)')   "  -> N-H masses(eV^-1), frequences(eV)"
+    WRITE(17,'(A,E15.8,1X,E15.8)') &
+                      "       ", &
+                      qmass(1)/Hart, &
+                      sqrt(dble(ntemp)*3.d0*DesiredTemp*8.6173324d-5*Hart/qmass(1))
+    WRITE(17,FMT1703) "  -> Final temp(K)      =",DesiredTemp
     END IF
-    WRITE(17,FMT1701) "  nelm             =", mscf
-    WRITE(17,FMT1702) "  rhodiff(e-)      =", tolrho
-    WRITE(17,FMT1702) "  intglerr         =", tolintgl
-    WRITE(17,FMT1701) "  istep            =", ntime_init
-    WRITE(17,FMT1703) "  starttime(fs)    =", init_time
-    WRITE(17,FMT1701) "  nstep            =", ntime
-    WRITE(17,FMT1701) "  iforce           =", ifatom
-    WRITE(17,FMT1701) "  ivdt             =", ivext_dt
-    WRITE(17,FMT1701) "  ikappa           =", ikappa
+
+    WRITE(17,FMT1701) "  nelm                  =", mscf
+    WRITE(17,FMT1702) "  rhodiff(e-)           =", tolrho
+    WRITE(17,FMT1702) "  intglerr              =", tolintgl
+    WRITE(17,FMT1701) "  istep                 =", ntime_init
+    WRITE(17,FMT1703) "  starttime(fs)         =", init_time
+    WRITE(17,FMT1701) "  nstep                 =", ntime
+    WRITE(17,FMT1701) "  iforce                =", ifatom
+    WRITE(17,FMT1701) "  ivdt                  =", ivext_dt
+    WRITE(17,FMT1701) "  ikappa                =", ikappa
+
     IF(ikappa.gt.0) THEN
-      WRITE(17,'(a,3(1x,e10.3),a)') &
-                      "  -> rkappa        = (", (rkappa(j), j=1,3), ")"
+    WRITE(17,'(a,3(1x,e10.3),a)') &
+                      "  -> rkappa             ="
+    WRITE(17,'(a,3(1x,e10.3),a)') &
+                      "     (",(rkappa(j), j=1,3), ")"
     END IF
-    WRITE(17,FMT1701) "  iboltz           =", iboltz
-    WRITE(17,FMT1701) "  ibandshift       =", ibshift
-    WRITE(17,FMT1701) "  iscale           =", i_scale
-    WRITE(17,FMT1701) "  iexci            =", iocc
+    WRITE(17,FMT1701) "  iboltz                =", iboltz
+    WRITE(17,FMT1701) "  ibandshift            =", ibshift
+    WRITE(17,FMT1701) "  iscale                =", i_scale
+    WRITE(17,FMT1701) "  iexci                 =", iocc
+
     IF(iocc.gt.0) THEN
-      WRITE(17,FMT1701) "  -> hole state    =", jhole
-      WRITE(17,FMT1701) "  -> elect state   =", jelec
-      WRITE(17,FMT1701) "  -> nexci         =", jxi
-      WRITE(17,FMT1703) "  -> rexci(e-)     =", rxi
+    WRITE(17,FMT1701) "  -> hole state         =", jhole
+    WRITE(17,FMT1701) "  -> elect state        =", jelec
+    WRITE(17,FMT1701) "  -> nexci              =", jxi
+    WRITE(17,FMT1703) "  -> rexci(e-)          =", rxi
     END IF
-    WRITE(17, '(a,11(1x,f10.3))') "  Nuclei masses    =", (MDtype(j), j=1,imax)
+
+    WRITE(17,'(a)')   "  Nuclei masses         ="
+    WRITE(17,'(a,11(1x,f10.3))') &
+                      "  ", (MDtype(j), j=1,imax)
+
     IF(imp_k.ne.0.d0) THEN
-      WRITE(17,FMT1703) " +Particle E_k     =", imp_k
+    WRITE(17,FMT1703) "  Particle E_k          =", imp_k
     END IF
+
     IF(ibo_md.gt.0) THEN
-      WRITE(17,'(a)')   "  Do Adiabatic MD  =  TRUE"
+    WRITE(17,'(a)')   "  Do Adiabatic MD       =  TRUE"
     END IF
-    WRITE(17,*) "****************************************"
+
+    WRITE(17,*)       "*********************************************"
     CALL system_flush(17)
 
   END IF ! IF(inode.eq.1)
@@ -1085,13 +1099,13 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
           DO i=1,natom
             WRITE(29,295) iatom(i), (xatom(j,i), j=1,3), (imov_at(j,i), j=1,3)
           END DO
-          CLOSE(29)
           IF(itherm.eq.1) THEN
             WRITE(29,*) "NH THERMOSTAT"
             DO i=1,nhchain
               WRITE(29,'(3(1X,E15.8))') xi(i), vxi(i), axi(i)
             ENDDO
           ENDIF
+          CLOSE(29)
         END IF
 
 295     FORMAT(i4,2x,3(f15.9,1x),2x,3(i2,1x))
