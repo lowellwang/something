@@ -1089,6 +1089,15 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
         END DO
         CLOSE(29)
 
+        IF(itherm.eq.1) THEN
+          OPEN(29,FILE="dtherm", access="append")
+          WRITE(29,*) "NH THERMOSTAT", itime
+          DO i=1,nhchain
+            WRITE(29,'(3(1X,E15.8))') xi(i), vxi(i), axi(i)
+          ENDDO
+          CLOSE(29)
+        ENDIF
+
         IF(ibo_md.gt.0) THEN
           OPEN(29,FILE="update_xatom")
           REWIND(29)
@@ -1099,12 +1108,6 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
           DO i=1,natom
             WRITE(29,295) iatom(i), (xatom(j,i), j=1,3), (imov_at(j,i), j=1,3)
           END DO
-          IF(itherm.eq.1) THEN
-            WRITE(29,*) "NH THERMOSTAT"
-            DO i=1,nhchain
-              WRITE(29,'(3(1X,E15.8))') xi(i), vxi(i), axi(i)
-            ENDDO
-          ENDIF
           CLOSE(29)
         END IF
 
