@@ -112,7 +112,7 @@ SUBROUTINE bandshift(kpt, iislda, E_st, AL, tot, iatom, xatom)
   ! better to read them from external files
   dV_1_VB = 0.D0/HART
   dV_2_VB =-0.2541D0/HART
-  dV_1_CB = 0.4996D0/HART + dP
+  dV_1_CB = 0.4423D0/HART + dP
   dV_2_CB = 0.2167D0/HART
 
   ! find the LUMO state
@@ -251,8 +251,14 @@ SUBROUTINE bandshift(kpt, iislda, E_st, AL, tot, iatom, xatom)
     if(i.eq.nlumo) then ! correct CB states
       dV1 = dV_1_CB
       dV2 = dV_2_CB
-    elseif(i.gt.nlumo) then ! additional correction for higher states
-      dV1 = dV_1_CB + 0.0910d0/HART
+    elseif(i.eq.(nlumo+1)) then ! additional correction for higher states
+      dV1 = dV_1_CB + 0.0970d0/HART
+      dV2 = dV_2_CB
+    elseif(i.eq.(nlumo+2)) then ! additional correction for higher states
+      dV1 = dV_1_CB + 0.1000d0/HART
+      dV2 = dV_2_CB
+    elseif(i.ge.(nlumo+3)) then ! additional correction for higher states
+      dV1 = dV_1_CB + 0.1296d0/HART
       dV2 = dV_2_CB
     else ! VB states
       dV1 = dV_1_VB

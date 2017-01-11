@@ -23,6 +23,7 @@ subroutine calc_dipole(flag, AL, nkpt, islda, frac, dipole, workr_phi, tot, ist,
   real(8), dimension(mst, mst, nkpt, islda) :: dipole
 
   complex(8), dimension(mr_n, mst) :: workr_phi
+  complex(8), dimension(mr_n, mst) :: workr_psi
 
   integer :: kpt, iislda, ii, jj, m, n, ierr, ilumo
   integer, dimension(3) :: igrid, ngrid
@@ -33,7 +34,6 @@ subroutine calc_dipole(flag, AL, nkpt, islda, frac, dipole, workr_phi, tot, ist,
 
   complex(8) :: wf2, wf2_2, wf2_psi, wf2_psi_2
   complex(8), dimension(3, mst, mst) :: P, ctmp
-  !complex(8), dimension(mr_n, mst) :: workr_psi
 
   real(8), parameter :: PI = 3.14159265d0
   complex(8), parameter :: zero = (0.d0, 0.d0), one = (1.d0, 0.d0), ci = (0.d0, 1.d0)
@@ -58,11 +58,12 @@ subroutine calc_dipole(flag, AL, nkpt, islda, frac, dipole, workr_phi, tot, ist,
       endif
 
       workr_phi = zero
-      !workr_psi = zero
+      workr_psi = zero
       frac = 0.d0
       P = zero
 
       call d3fft_comp_block(ug_n_bp(1, ist), workr_phi, -1, kpt, ied - ist + 1)
+      call d3fft_comp_block(cpsi_td(1, ist, 1, 1), workr_psi, -1, kpt, ied - ist + 1)
 
       do ii = 1, nr_n
 
@@ -95,8 +96,8 @@ subroutine calc_dipole(flag, AL, nkpt, islda, frac, dipole, workr_phi, tot, ist,
         if(flag.eq.1) then
           do m = ist+1, ied
             do n = ist, m-1
-              wf2   = workr_phi(ii, m - ist + 1)
-              wf2_2 = workr_phi(ii, n - ist + 1)
+              wf2   = workr_psi(ii, m - ist + 1)
+              wf2_2 = workr_psi(ii, n - ist + 1)
               P(:, n, m) = P(:, n, m) + rn(:) * conjg(wf2) * wf2_2
             enddo
           enddo
