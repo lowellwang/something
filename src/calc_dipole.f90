@@ -20,7 +20,7 @@ subroutine calc_dipole(flag, AL, nkpt, islda, frac, dipole, workr_phi, tot, ist,
 
   real(8), dimension(2, mst) :: frac, rtmp
   real(8), dimension(3, 3) :: AL
-  real(8), dimension(mst, mst, nkpt, islda) :: dipole
+  real(8), dimension(mst, mst, 2) :: dipole
 
   complex(8), dimension(mr_n, mst) :: workr_phi
   complex(8), dimension(mr_n, mst) :: workr_psi
@@ -33,7 +33,7 @@ subroutine calc_dipole(flag, AL, nkpt, islda, frac, dipole, workr_phi, tot, ist,
   !real(8), dimension(3, mst) :: rc, tmp
 
   complex(8) :: wf2, wf2_2, wf2_psi, wf2_psi_2
-  complex(8), dimension(3, mst, mst) :: P, ctmp
+  complex(8), dimension(3, mst, mst, 2) :: P, ctmp
 
   real(8), parameter :: PI = 3.14159265d0
   complex(8), parameter :: zero = (0.d0, 0.d0), one = (1.d0, 0.d0), ci = (0.d0, 1.d0)
@@ -96,9 +96,13 @@ subroutine calc_dipole(flag, AL, nkpt, islda, frac, dipole, workr_phi, tot, ist,
         if(flag.eq.1) then
           do m = ist+1, ied
             do n = ist, m-1
+              wf2   = workr_phi(ii, m - ist + 1)
+              wf2_2 = workr_phi(ii, n - ist + 1)
+              P(:, n, m, 1) = P(:, n, m, 1) + rn(:) * conjg(wf2) * wf2_2
+
               wf2   = workr_psi(ii, m - ist + 1)
               wf2_2 = workr_psi(ii, n - ist + 1)
-              P(:, n, m) = P(:, n, m) + rn(:) * conjg(wf2) * wf2_2
+              P(:, n, m, 2) = P(:, n, m, 2) + rn(:) * conjg(wf2) * wf2_2
             enddo
           enddo
         endif
@@ -118,11 +122,12 @@ subroutine calc_dipole(flag, AL, nkpt, islda, frac, dipole, workr_phi, tot, ist,
       enddo
 
       if(flag.eq.1) then
-        call mpi_allreduce(P, ctmp, 3*mst*mst, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_K, ierr)
+        call mpi_allreduce(P, ctmp, 3*mst*mst*2, MPI_DOUBLE_COMPLEX, MPI_SUM, MPI_COMM_K, ierr)
         P = ctmp
         do m = ist+1, ied
           do n = ist, m-1
-            dipole(n, m, kpt, iislda) = abs(P(1,n,m))**2 + abs(P(2,n,m))**2 + abs(P(3,n,m))**2
+            dipole(n, m, 1) = abs(P(1,n,m,1))**2 + abs(P(2,n,m,1))**2 + abs(P(3,n,m,1))**2
+            dipole(n, m, 2) = abs(P(1,n,m,2))**2 + abs(P(2,n,m,2))**2 + abs(P(3,n,m,2))**2
           enddo
         enddo
       endif

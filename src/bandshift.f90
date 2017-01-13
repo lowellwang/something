@@ -8,13 +8,13 @@ SUBROUTINE bandshift(kpt, iislda, E_st, AL, tot, iatom, xatom)
 !            phi(iA) = mask(r) * phi(i)
 !            phi(iB) = (1 - mask(r)) * phi(i)
 !     2. Calculate the dot_product:
-!            dot_i_iN(i, iN) = <phi(i)|phi(iN)>, N = 1,2
+!            dot_i_iN(i, iN) = <phi(i)|phi(iN)>, N = A,B
 !     3. Generate the corrected eigen energy:
 !            E_corrected(iN, iM) = 
-!                      E_st(i) + Delta1, if N = M = 1;
-!                      E_st(i) + Delta2, if N = M = 2;
+!                      E_st(i) + Delta1, if N = M = A;
+!                      E_st(i) + Delta2, if N = M = B;
 !                      E_st(i) + (Delta1 + Delta2)/2, if N != M;
-!     4. The corrected Hamiltonian should be (via phi(i) basis):
+!     4. The corrected Hamiltonian should be (phi(i) basis):
 !            H_corrected(i, j) = 
 !                      \sum_{k,N,M} dot_i_iN(i, kN) * &
 !                                   E_corrected(kN, kM) * &
@@ -110,7 +110,7 @@ SUBROUTINE bandshift(kpt, iislda, E_st, AL, tot, iatom, xatom)
 
   ! energy corrections
   ! better to read them from external files
-  dV_1_VB = 0.D0/HART
+  dV_1_VB =-0.2541D0/HART
   dV_2_VB =-0.2541D0/HART
   dV_1_CB = 0.4423D0/HART + dP
   dV_2_CB = 0.2167D0/HART
