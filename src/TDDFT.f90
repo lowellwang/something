@@ -950,12 +950,19 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! 0. calc states distribution and dipole(i,j)
       IF(ibshift.eq.1) THEN
+      !IF(1.eq.1) THEN
+
+      string = "Before calc_dipole"
+      CALL timing_mpi(string,t_0)
 
       itmp = 165
       itmp2 = mmn
       call calc_dipole(1, AL, nkpt, islda, frac, dipole, workr, totNel, itmp, itmp2)
 
-      IF(1.eq.1) THEN
+      string = "calc_dipole"
+      CALL timing_mpi(string,t_0)
+
+      IF(1.eq.1.and.inode.eq.1) THEN
 
         filename="phi_dipole."
         WRITE(fileindex,'(i)') nkpt
