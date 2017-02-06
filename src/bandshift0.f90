@@ -30,6 +30,9 @@ subroutine bandshift0(xatom, iatom, AL)
   e_SC = 4.71d0
   !e_SC = 4.35d0
 
+  !e_SC = 4.71d0
+  e_SC = 4.35d0
+
   mcenter = 0.d0
   totmass = 0.d0
   gz_1 =-10000.d0

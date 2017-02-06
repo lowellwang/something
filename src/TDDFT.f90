@@ -950,6 +950,10 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! 0. calc states distribution and dipole(i,j)
       IF(ibshift.eq.1) THEN
+      !IF(1.eq.1) THEN
+
+      string = "Before calc_dipole"
+      CALL timing_mpi(string,t_0)
 
       string = "Before calc_dipole"
       CALL timing_mpi(string,t_0)
