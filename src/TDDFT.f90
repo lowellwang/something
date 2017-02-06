@@ -955,10 +955,7 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
       string = "Before calc_dipole"
       CALL timing_mpi(string,t_0)
 
-      string = "Before calc_dipole"
-      CALL timing_mpi(string,t_0)
-
-      itmp = 300
+      itmp = 165
       itmp2 = mmn
       call calc_dipole(1, AL, nkpt, islda, frac, dipole, workr, totNel, itmp, itmp2)
 
