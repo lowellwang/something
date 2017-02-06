@@ -18,14 +18,17 @@ subroutine bandshift0(xatom, iatom, AL)
   real(8), dimension(3, 2) :: mcenter
   real(8), dimension(2) :: totmass
   real(8), parameter :: e_SC_bulk = 6.2d0
-  real(8), parameter :: e_sol = 2.2d0
+  real(8), parameter :: e_sol = 2.17d0
   real(8), parameter :: Bohr = 0.529177d0
   real(8), parameter :: Hart = 27.211396d0
 
-  !isurf1 = 62
-  !isurf2 = 63
-  isurf1 = 1
-  isurf2 = 2
+  isurf1 = 62
+  isurf2 = 63
+  !isurf1 = 1
+  !isurf2 = 2
+
+  e_SC = 4.71d0
+  !e_SC = 4.35d0
 
   mcenter = 0.d0
   totmass = 0.d0
@@ -67,8 +70,8 @@ subroutine bandshift0(xatom, iatom, AL)
       gz_2 = AL(3,3)
     elseif((gz_1 + 1.889d0) .lt. (gz_2 - 1.889d0)) then
       write(6,*) "good"
-      gz_1 = gz_1 + 1.889d0
-      gz_2 = gz_2 - 1.889d0
+      ! gz_1 = gz_1 + 1.889d0
+      ! gz_2 = gz_2 - 1.889d0
     else 
       write(6,*) "soso"
     endif
@@ -101,9 +104,6 @@ subroutine bandshift0(xatom, iatom, AL)
 
   diameter = dis_qd_CtoS(1) + dis_qd_CtoS(2) + 1.d0 * 1.84d0 / Bohr
   !e_SC = 1.d0 + (e_SC_bulk - 1.d0) / (1.d0 + (7.5 / diameter / Bohr)**1.2d0)
-
-  !e_SC = 4.71d0
-  e_SC = 4.35d0
 
   dP = 0.d0
   do i = 0, 100

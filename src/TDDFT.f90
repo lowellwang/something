@@ -79,7 +79,7 @@ SUBROUTINE TDDFT(xatom, fatom, workr_n, Etot, iforce_cal, ido_rho, &
 
   ! Other output
   REAL(8), DIMENSION(2, mst) :: frac
-  REAL(8), DIMENSION(mst, mst, nkpt, islda) :: dipole
+  REAL(8), DIMENSION(mst, mst, 2) :: dipole
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -215,6 +215,8 @@ SUBROUTINE TDDFT(xatom, fatom, workr_n, Etot, iforce_cal, ido_rho, &
   step_num = 0
   t_loop = 0.d0
   t_loop_ave = 0.d0
+
+  dipole = 0.d0
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -949,13 +951,19 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
       ! 0. calc states distribution and dipole(i,j)
       IF(ibshift.eq.1) THEN
 
-      itmp = 165
+      string = "Before calc_dipole"
+      CALL timing_mpi(string,t_0)
+
+      itmp = 300
       itmp2 = mmn
       call calc_dipole(1, AL, nkpt, islda, frac, dipole, workr, totNel, itmp, itmp2)
 
-      IF(1.eq.1) THEN
+      string = "calc_dipole"
+      CALL timing_mpi(string,t_0)
 
-        filename="as_dipole."
+      IF(1.eq.1.and.inode.eq.1) THEN
+
+        filename="phi_dipole."
         WRITE(fileindex,'(i)') nkpt
         filename=trim(adjustl(filename))//trim(adjustl(fileindex))//"."
         WRITE(fileindex,'(i)') islda
@@ -966,7 +974,22 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
         OPEN(29,FILE=filename)
         REWIND(29)
         DO i = itmp, itmp2
-          WRITE(29,180) (dipole(i,j,nkpt,islda), j=itmp, itmp2)
+          WRITE(29,180) (dipole(i,j,1), j=itmp, itmp2)
+        END DO
+        CLOSE(29)
+
+        filename="psi_dipole."
+        WRITE(fileindex,'(i)') nkpt
+        filename=trim(adjustl(filename))//trim(adjustl(fileindex))//"."
+        WRITE(fileindex,'(i)') islda
+        filename=trim(adjustl(filename))//trim(adjustl(fileindex))//"."
+        WRITE(fileindex,'(i)') itime-1
+        filename=trim(adjustl(filename))//trim(adjustl(fileindex))
+
+        OPEN(29,FILE=filename)
+        REWIND(29)
+        DO i = itmp, itmp2
+          WRITE(29,180) (dipole(i,j,2), j=itmp, itmp2)
         END DO
         CLOSE(29)
 
@@ -1161,12 +1184,12 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
           DO i=1,mst
             IF(ibo_md.le.0) THEN
               IF(i.le.mmn) THEN
-                WRITE(18,180) E_st(i,kpt,iislda) * Hart, &
-                              dos(i,kpt,iislda),E_td(i,kpt,iislda) * Hart, &
+                WRITE(18,180) E_st(i,kpt,iislda) * Hart, dos(i,kpt,iislda), &
+                              E_td(i,kpt,iislda) * Hart, occ0(i,kpt,iislda), &
                               frac(1, i), frac(2, i)
               ELSE
-                WRITE(18,180) E_st(i,kpt,iislda) * Hart, &
-                              dos(i,kpt,iislda),E_st(i,kpt,iislda) * Hart, &
+                WRITE(18,180) E_st(i,kpt,iislda) * Hart, dos(i,kpt,iislda), &
+                              E_st(i,kpt,iislda) * Hart, dos(i,kpt,iislda), &
                               frac(1, i), frac(2, i)
               END IF
             ELSE
@@ -1193,10 +1216,10 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
         CALL unfmtIO_c(18,filename,cc_pp0,mst*mmn*nkpt*islda,1,0)
         !!!!!!!!!!!!!!!!!!
         ! output H(t2)
-        filename="H_t2."
-        WRITE(fileindex,'(i)') itime-1
-        filename=trim(adjustl(filename))//trim(adjustl(fileindex))
-        CALL unfmtIO_c(18,filename,H_T,mst*mst*nkpt*islda,1,0)
+        ! filename="H_t2."
+        ! WRITE(fileindex,'(i)') itime-1
+        ! filename=trim(adjustl(filename))//trim(adjustl(fileindex))
+        ! CALL unfmtIO_c(18,filename,H_T,mst*mst*nkpt*islda,1,0)
       END IF
       ! 5. end
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
