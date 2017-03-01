@@ -8,13 +8,13 @@ SUBROUTINE bandshift(kpt, iislda, E_st, AL, tot, iatom, xatom)
 !            phi(iA) = mask(r) * phi(i)
 !            phi(iB) = (1 - mask(r)) * phi(i)
 !     2. Calculate the dot_product:
-!            dot_i_iN(i, iN) = <phi(i)|phi(iN)>, N = 1,2
+!            dot_i_iN(i, iN) = <phi(i)|phi(iN)>, N = A,B
 !     3. Generate the corrected eigen energy:
 !            E_corrected(iN, iM) = 
-!                      E_st(i) + Delta1, if N = M = 1;
-!                      E_st(i) + Delta2, if N = M = 2;
+!                      E_st(i) + Delta1, if N = M = A;
+!                      E_st(i) + Delta2, if N = M = B;
 !                      E_st(i) + (Delta1 + Delta2)/2, if N != M;
-!     4. The corrected Hamiltonian should be (via phi(i) basis):
+!     4. The corrected Hamiltonian should be (phi(i) basis):
 !            H_corrected(i, j) = 
 !                      \sum_{k,N,M} dot_i_iN(i, kN) * &
 !                                   E_corrected(kN, kM) * &
@@ -110,10 +110,10 @@ SUBROUTINE bandshift(kpt, iislda, E_st, AL, tot, iatom, xatom)
 
   ! energy corrections
   ! better to read them from external files
-  dV_1_VB = 0.D0/HART
-  dV_2_VB = 0.D0/HART
-  dV_1_CB = 0.4996D0/HART + dP
-  dV_2_CB = 0.D0/HART
+  dV_1_VB =-0.2541D0/HART
+  dV_2_VB =-0.2541D0/HART
+  dV_1_CB = 0.4423D0/HART + dP
+  dV_2_CB = 0.2167D0/HART
 
   ! find the LUMO state
   nlumo = floor(tot / 2.d0 + 0.1) + 1
@@ -248,11 +248,8 @@ SUBROUTINE bandshift(kpt, iislda, E_st, AL, tot, iatom, xatom)
 
   E_corrected = ZERO
   do i = 1,mst
-    if(i.eq.nlumo) then ! correct CB states
+    if(i.ge.nlumo) then ! correct CB states
       dV1 = dV_1_CB
-      dV2 = dV_2_CB
-    elseif(i.gt.nlumo) then ! additional correction for higher states
-      dV1 = dV_1_CB + 0.0910d0/HART
       dV2 = dV_2_CB
     else ! VB states
       dV1 = dV_1_VB

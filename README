@@ -25,10 +25,10 @@ pseudo potentials       only vwr available now
 # Updated at each time step
 
 report:         Report for PEtot
-# If this file already exists, and you make a new run, then a new 'report' file will REPLACE the old one.
+# If this file already exists, and you make a new run, old 'report' file will be REPLACED (no auto-backup).
 
 report_TDDFT:   Report for TDDFT 
-# If this file already exists, and you make a new run, old 'report_TDDFT' will be RENAMED but not replaced.
+# If this file already exists, and you make a new run, old 'report_TDDFT' will be RENAMED (auto-backup).
 
 plot_MD.txt:    Report for system energies
 # It contains E_tot (total energy), E_elec (electro potential), E_ion (ionic kinetic energy), E_ion_imp (high-speed projectile energy, if needed), tempareture and total energy scaling.
@@ -39,10 +39,10 @@ dfatom0,1:      DFT forces on each ions
 cc.*:           (BINARY) Coefficients {cij} (psi_i = \sum cij * phi_j)
 
 occ.*:          States energies
-# It contains energies and occupations of adiabatic states, and energies of time-dependent states.
+# It contains energies and occupations of adiabatic states (column 1&2) and time-dependent states (column 3&4).
 
 (b) Savepoint files: 
-# These files are output to disk only
+# These files are output to disk only:
 # 1) at every 'nwrite' time step,
 # 2) at the last time step,
 # 3) at one time step that 'rhodiff' cannot be achieved within 'nelm' loops,
@@ -70,22 +70,29 @@ see original PEtot readme
 --------------------------------------------
 
 
-2. TDDFT.input (* are essential parameters)
+2. TDDFT.input
 --------------------------------------------
-# Basic format: parameter = $value, one line for one parameter.
-# Parameters can be written with and without quote mark: Both dt and 'dt' are OK.
+# Basic format: parameter = value, one line for one parameter.
+#
+# Parameters can be written with or without quote mark: Both dt and 'dt' are OK.
 # Lines start with '!' will be ignored as comments.
 # Blank lines will be ignored.
+#
+# During running, any issues on the input parameter will be shown in the output, 
+# staring with "--WARNING" or "--ERROR"
+
+Parameter list: (* are essential parameters)
 
 *dt:            TDDFT time step length (fs).
-# It should be chosen corresponding to your simulation period.
+# It should be chosen corresponding to your simulation system.
 # One simple formula is:
 #       'dt' = alpha * 1/(adiabatic basis energy range)
-# where alpha could be 1.5 for simulation ~ 100 fs, and 0.5 ~ 1 for simulation > 1 ps. Never use alpha > 2, because it will lead to exponential divergency.
+# where alpha could be 1.5 for simulation ~ 100 fs, and 0.5 ~ 1 for simulation > 1 ps. 
+# Never use alpha > 2, because it will lead to exponential divergency.
 
 *istep:         Initial time step.
-# Set to 0 to start a new calculation, or set to >0 to restart from one exist savepoint.
-# If 'istep' > 0, the program will firstly search for file 'btmp_st.$($(istep)-1)', if this file does not exist, it will then search for the newest 'btmp_st.*', then generate the new 'istep'. 
+# Set to 0 to start a new calculation, or set to a specific value to restart from one specific savepoint.
+# If 'istep' > 0, the program will firstly search for file 'btmp_st.$($(istep)-1)', if this file does not exist, it will then search for the newest 'btmp_st.*'. 
 # For example, if one has 'rho_st.20' 'wg_st.20' and 'btmp_st.20', then no matter what value 'istep' has, as long as 'istep' > 0, the calculation will restart from time step 21.
 # However if one has both 'btmp_st.20' and 'btmp_st.30', then if 'istep' = 21, the program will restart from time step 21, elseif 'istep' has any other value (>0), the program will restart from time step 31.
 
@@ -128,7 +135,7 @@ nwrite:         Controller of temp file (savepoint) output
 # Smaller 'nwrite' needs larger disk space and higher I/O frequncy, while larger 'nwrite' may not store the newest results in time.
 # Set it according to your need.
 
-tmprtr:         Initial temperature (K)
+tmpst:         Initial temperature (K)
 # Default: 0.d0 
 # Should >= 0.d0
 # It is only used to generate random ionic velocities at t=0.
@@ -159,12 +166,13 @@ ivdt:           Flag for time-dependent external electric field
 imd:            MD method
 # Default: 1
 # For now only 'imd'=1 (Verlet method) is supported.
+# (experimental) Use imd = 11 to turn on Nose-Hoover chain + Verlet method calculation.
 
 iscaling:       Flag for scaling ionic kinetic energies
 # Default: 0
 # One can never use infinite accuracy in calculations, so the total energy cannot be perfectly constant.
 # Use this to scale ionic energies at each time step, so that total energy can be exactly constant.
-# NOT RECOMMENTED if you do not put corrections on DFT potentials.
+# NOT RECOMMENTED unless you do put corrections on DFT potentials.
 
 ibandshift:     (experimental) Flag for correcting DFT state levels
 # Default: 0
@@ -213,25 +221,28 @@ velocity:       Assign initial ionic velocities
 
 ------------------------- HOW TO USE ---------------------------
 ################################################################
-1. Start a new simulation:
+1. To start a new simulation:
 
-1) Put all input files in the same directory.
+1) Put all input files in the directory where the executable file lies.
 2) Remember to set 'istep' = 0 in TDDFT.input for a new calculation.
-3) Run PEtot_TDDFT in the same directory.
+3) Run PEtot_TDDFT.
 
-2. Restart from one savepoint:
+2. To restart from one savepoint:
 
-Firstly, an available savepoint for time step $step should have all these files:
+Firstly, an available savepoint for time step $step should be made up by:
 (1) all essential input files (the same as what you need to start a new calculation)
 (2) occ_st
 (3) wg_st.$step
 (4) rho_st_1,2,3.$step
 (5) btmp_st.$step
-Once you have all these stuff, put them all in one directory.
+Once you have all these stuff, put them all in the directory where the executable file lies.
 
-Secondly, you need to set etot.input line:7 iwg_in=1, and wg_in1,2 to wg_st.$step, respectively. 
+Secondly, you need to set etot.input line:7 as:
+7   1, wg_st.$step, wg.in2 ! because the program does not support spin, so wg.in2 will never be used
 
-Thirdly, set 'istep' = $(($step+1)) in TDDFT.input to use the $step savepoint, or simply set 'istep' = 1 to use the newest savepoint.
+Thirdly, write one line as
+istep = $(($step+1))
+in TDDFT.input to use the $step savepoint, or simply use istep = 1 to use the newest savepoint.
 
 Finally, run PEtot_TDDFT in the same directory.
 ################################################################

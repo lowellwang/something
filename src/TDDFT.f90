@@ -79,17 +79,19 @@ SUBROUTINE TDDFT(xatom, fatom, workr_n, Etot, iforce_cal, ido_rho, &
 
   ! Other output
   REAL(8), DIMENSION(2, mst) :: frac
-  REAL(8), DIMENSION(mst, mst, nkpt, islda) :: dipole
+  REAL(8), DIMENSION(mst, mst, 2) :: dipole
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   ! Force & MD calc
 
   INTEGER :: ireplace, ivlct, ntemp
+  INTEGER :: itherm, nhchain
+  REAL(8), DIMENSION(7) :: qmass, xi, vxi, axi
   REAL(8) :: vxc1, vxc2, uxc1, uxc2
-  REAL(8) :: DesiredTemp, TotalEn, Box, Delt, rtmp
-  REAL(8), DIMENSION(3,matom) :: fatom0, fatom1, DeltR, V_output
-  REAL(8), DIMENSION(matom) :: VX, VY, VZ
+  REAL(8) :: InitTemp, DesiredTemp, TotalEn, Ekin, Box, Delt, rtmp
+  REAL(8), DIMENSION(3,matom) :: fatom0, fatom1, DeltR
+  REAL(8), DIMENSION(3,matom) :: Vi, V_output
 
   REAL(8), ALLOCATABLE, DIMENSION(:,:) :: fatom_tmp, fatom_tmp2
 
@@ -200,6 +202,11 @@ SUBROUTINE TDDFT(xatom, fatom, workr_n, Etot, iforce_cal, ido_rho, &
   rho_storage_nL = 0.d0
 !      cc_phase=one
 
+  qmass(1:7) = 0.d0
+  xi(1:7) = 0.d0
+  vxi(1:7) = 0.d0
+  axi(1:7) = 0.d0
+
   gz_1 = 0.d0
   gz_2 = 0.d0
 
@@ -209,22 +216,26 @@ SUBROUTINE TDDFT(xatom, fatom, workr_n, Etot, iforce_cal, ido_rho, &
   t_loop = 0.d0
   t_loop_ave = 0.d0
 
+  dipole = 0.d0
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-  CALL input_TDDFT(totNel, mx, mmn0, iwg_in, imax, rkappa, ivlct, ntemp, VX, VY, VZ, &
+  CALL input_TDDFT(totNel, mx, mmn0, iwg_in, imax, rkappa, &
+                   ivlct, ntemp, Vi, itherm, nhchain, qmass, &
+                   xi, vxi, axi, &
+                   InitTemp, DesiredTemp, &
                    finp_td, ftmp_st, fdx_td, t_timewall)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !  ! Try to heat the system
-!  VX(:) = VX(:) * sqrt(300.d0/4.37d0)
-!  VY(:) = VY(:) * sqrt(300.d0/4.37d0)
-!  VZ(:) = VZ(:) * sqrt(300.d0/4.37d0)
+!  Vi(:,:) = Vi(:,:) * sqrt(300.d0/4.37d0)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   Box = 1.d0
   dt_step = dtMD                                           ! unit fs
-  Delt = dtMD / 2.418884D-2                                ! atomic unit, for MD only
-  DesiredTemp = temperature
+  Delt = dtMD / 2.418884D-2                                ! a.u.
+  qmass = qmass * Hart                                     ! a.u.
+  temperature = InitTemp
   kT = temperature * 8.6173324d-5 / Hart
   time = init_time - dt_step
 
@@ -266,47 +277,71 @@ SUBROUTINE TDDFT(xatom, fatom, workr_n, Etot, iforce_cal, ido_rho, &
     OPEN(17, FILE=frep_td)
     REWIND(17)
 
-    WRITE(17,*) "Input parameters"
-    WRITE(17,*) "****************************************"
-    WRITE(17,FMT1701) "  nbasis           =", mst2
-    WRITE(17,FMT1701) "  nbands           =", mmn
-!    IF(mmn0.gt.1) THEN
-      WRITE(17,FMT1701) "  -> nband0        =", mmn0
-!    END IF
-    WRITE(17,FMT1703) "  dt(fs)           =", dtMD
-    WRITE(17,FMT1701) "  imd              =", iMD
-    WRITE(17,FMT1703) "  temperature(K)   =", temperature
-    WRITE(17,FMT1701) "  nelm             =", mscf
-    WRITE(17,FMT1702) "  rhodiff(e-)      =", tolrho
-    WRITE(17,FMT1702) "  intglerr         =", tolintgl
-    WRITE(17,FMT1701) "  istep            =", ntime_init
-    WRITE(17,FMT1703) "  starttime(fs)    =", init_time
-    WRITE(17,FMT1701) "  nstep            =", ntime
-    WRITE(17,FMT1701) "  iforce           =", ifatom
-    WRITE(17,FMT1701) "  ivdt             =", ivext_dt
-    WRITE(17,FMT1701) "  ikappa           =", ikappa
+    WRITE(17,*)       "Input parameters"
+    WRITE(17,*)       "*********************************************"
+    WRITE(17,FMT1701) "  nbasis                =", mst2
+    WRITE(17,FMT1701) "  nbands                =", mmn
+
+    IF(mmn0.gt.1) THEN
+    WRITE(17,FMT1701) "  -> nband0             =", mmn0
+    END IF
+
+    WRITE(17,FMT1703) "  dt(fs)                =", dtMD
+    WRITE(17,FMT1701) "  imd                   =", iMD
+    WRITE(17,FMT1703) "  temperature(K)        =", temperature
+
+    IF(itherm.eq.1) THEN
+    WRITE(17,'(A)')   "  -> Nose-Hoover Chain:"
+    WRITE(17,FMT1701) "  -> chain length       =", nhchain
+    WRITE(17,'(A)')   "  -> N-H masses(eV^-1), frequences(eV)"
+    WRITE(17,'(A,E15.8,1X,E15.8)') &
+                      "       ", &
+                      qmass(1)/Hart, &
+                      sqrt(dble(ntemp)*3.d0*DesiredTemp*8.6173324d-5*Hart/qmass(1))
+    WRITE(17,FMT1703) "  -> Final temp(K)      =",DesiredTemp
+    END IF
+
+    WRITE(17,FMT1701) "  nelm                  =", mscf
+    WRITE(17,FMT1702) "  rhodiff(e-)           =", tolrho
+    WRITE(17,FMT1702) "  intglerr              =", tolintgl
+    WRITE(17,FMT1701) "  istep                 =", ntime_init
+    WRITE(17,FMT1703) "  starttime(fs)         =", init_time
+    WRITE(17,FMT1701) "  nstep                 =", ntime
+    WRITE(17,FMT1701) "  iforce                =", ifatom
+    WRITE(17,FMT1701) "  ivdt                  =", ivext_dt
+    WRITE(17,FMT1701) "  ikappa                =", ikappa
+
     IF(ikappa.gt.0) THEN
-      WRITE(17,'(a,3(1x,e10.3),a)') &
-                      "  -> rkappa        = (", (rkappa(j), j=1,3), ")"
+    WRITE(17,'(a,3(1x,e10.3),a)') &
+                      "  -> rkappa             ="
+    WRITE(17,'(a,3(1x,e10.3),a)') &
+                      "     (",(rkappa(j), j=1,3), ")"
     END IF
-    WRITE(17,FMT1701) "  iboltz           =", iboltz
-    WRITE(17,FMT1701) "  ibandshift       =", ibshift
-    WRITE(17,FMT1701) "  iscale           =", i_scale
-    WRITE(17,FMT1701) "  iexci            =", iocc
+    WRITE(17,FMT1701) "  iboltz                =", iboltz
+    WRITE(17,FMT1701) "  ibandshift            =", ibshift
+    WRITE(17,FMT1701) "  iscale                =", i_scale
+    WRITE(17,FMT1701) "  iexci                 =", iocc
+
     IF(iocc.gt.0) THEN
-      WRITE(17,FMT1701) "  -> hole state    =", jhole
-      WRITE(17,FMT1701) "  -> elect state   =", jelec
-      WRITE(17,FMT1701) "  -> nexci         =", jxi
-      WRITE(17,FMT1703) "  -> rexci(e-)     =", rxi
+    WRITE(17,FMT1701) "  -> hole state         =", jhole
+    WRITE(17,FMT1701) "  -> elect state        =", jelec
+    WRITE(17,FMT1701) "  -> nexci              =", jxi
+    WRITE(17,FMT1703) "  -> rexci(e-)          =", rxi
     END IF
-    WRITE(17, '(a,11(1x,f10.3))') "  Nuclei masses    =", (MDtype(j), j=1,imax)
+
+    WRITE(17,'(a)')   "  Nuclei masses         ="
+    WRITE(17,'(a,11(1x,f10.3))') &
+                      "  ", (MDtype(j), j=1,imax)
+
     IF(imp_k.ne.0.d0) THEN
-      WRITE(17,FMT1703) " +Particle E_k     =", imp_k
+    WRITE(17,FMT1703) "  Particle E_k          =", imp_k
     END IF
+
     IF(ibo_md.gt.0) THEN
-      WRITE(17,'(a)')   "  Do Adiabatic MD  =  TRUE"
+    WRITE(17,'(a)')   "  Do Adiabatic MD       =  TRUE"
     END IF
-    WRITE(17,*) "****************************************"
+
+    WRITE(17,*)       "*********************************************"
     CALL system_flush(17)
 
   END IF ! IF(inode.eq.1)
@@ -382,13 +417,13 @@ Loop_itime: DO itime = ntime_init + 1, ntime_init + ntime
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! calc the semiconductor surface polarization effect
-    if(inode.eq.1.and.ibshift.eq.1) call bandshift0(xatom, iatom, AL)
-    !if(inode.eq.1) call bandshift0(xatom, iatom, AL)
-    if(ibshift.eq.1) then
-      call mpi_bcast(dP, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
-      call mpi_bcast(gz_1, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
-      call mpi_bcast(gz_2, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
-    endif
+    !if(inode.eq.1.and.ibshift.eq.1) call bandshift0(xatom, iatom, AL)
+    !!if(inode.eq.1) call bandshift0(xatom, iatom, AL)
+    !if(ibshift.eq.1) then
+    !  call mpi_bcast(dP, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
+    !  call mpi_bcast(gz_1, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
+    !  call mpi_bcast(gz_2, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
+    !endif
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! check external field
@@ -914,32 +949,54 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! 0. calc states distribution and dipole(i,j)
-      IF(ibshift.eq.1) THEN
+      !IF(ibshift.eq.1) THEN
+      !!IF(1.eq.1) THEN
 
-      itmp = 190
-      itmp2 = 214
-      call calc_dipole(1, AL, nkpt, islda, frac, dipole, workr, totNel, itmp, itmp2)
+      !string = "Before calc_dipole"
+      !CALL timing_mpi(string,t_0)
 
-      IF(1.eq.1) THEN
+      !itmp = 165
+      !itmp2 = mmn
+      !call calc_dipole(1, AL, nkpt, islda, frac, dipole, workr, totNel, itmp, itmp2)
 
-        filename="ds_dipole."
-        WRITE(fileindex,'(i)') nkpt
-        filename=trim(adjustl(filename))//trim(adjustl(fileindex))//"."
-        WRITE(fileindex,'(i)') islda
-        filename=trim(adjustl(filename))//trim(adjustl(fileindex))//"."
-        WRITE(fileindex,'(i)') itime-1
-        filename=trim(adjustl(filename))//trim(adjustl(fileindex))
+      !string = "calc_dipole"
+      !CALL timing_mpi(string,t_0)
 
-        OPEN(29,FILE=filename)
-        REWIND(29)
-        DO i = itmp, floor(totNel/2.d0+0.1)
-          WRITE(29,180) (dipole(i,j,nkpt,islda), j=floor(totNel/2.d0+0.1)+1, itmp2)
-        END DO
-        CLOSE(29)
+      !IF(1.eq.1.and.inode.eq.1) THEN
 
-      ENDIF
+      !  filename="phi_dipole."
+      !  WRITE(fileindex,'(i)') nkpt
+      !  filename=trim(adjustl(filename))//trim(adjustl(fileindex))//"."
+      !  WRITE(fileindex,'(i)') islda
+      !  filename=trim(adjustl(filename))//trim(adjustl(fileindex))//"."
+      !  WRITE(fileindex,'(i)') itime-1
+      !  filename=trim(adjustl(filename))//trim(adjustl(fileindex))
 
-      ENDIF
+      !  OPEN(29,FILE=filename)
+      !  REWIND(29)
+      !  DO i = itmp, itmp2
+      !    WRITE(29,180) (dipole(i,j,1), j=itmp, itmp2)
+      !  END DO
+      !  CLOSE(29)
+
+      !  filename="psi_dipole."
+      !  WRITE(fileindex,'(i)') nkpt
+      !  filename=trim(adjustl(filename))//trim(adjustl(fileindex))//"."
+      !  WRITE(fileindex,'(i)') islda
+      !  filename=trim(adjustl(filename))//trim(adjustl(fileindex))//"."
+      !  WRITE(fileindex,'(i)') itime-1
+      !  filename=trim(adjustl(filename))//trim(adjustl(fileindex))
+
+      !  OPEN(29,FILE=filename)
+      !  REWIND(29)
+      !  DO i = itmp, itmp2
+      !    WRITE(29,180) (dipole(i,j,2), j=itmp, itmp2)
+      !  END DO
+      !  CLOSE(29)
+
+      !ENDIF
+
+      !ENDIF
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! 1. calc the total dipole moment, by Jie Ma
@@ -989,9 +1046,7 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
       !!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! DEBUG Artificial cooling down
 !      IF( itime.gt.1 .and. mod((itime-1),10).eq.0 ) THEN
-!        VX=0.d0
-!        VY=0.d0
-!        VZ=0.d0
+!        Vi=0.d0
 !        IF(inode.eq.1) WRITE(6,*) " Artificial cooling down at itime=",itime
 !      ENDIF
       !!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1007,8 +1062,9 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
         END IF
 
         CALL MVATOMS(itime, iscale, Delt, Box, xatom, fatom0, fatom1, &
-                     AL, Etot, DesiredTemp, TotalEn, ivlct, ntemp, VX, VY, VZ, &
-                     V_output)
+                     AL, Etot, InitTemp, DesiredTemp, TotalEn, Ekin, &
+                     ivlct, ntemp, Vi, V_output, &
+                     itherm, nhchain, qmass, xi, vxi, axi)
 
         string = "atoms moving ends"
         CALL timing_mpi(string,t_0)
@@ -1056,6 +1112,15 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
           WRITE(29,295) iatom(i), (xatom(j,i), j=1,3), (imov_at(j,i), j=1,3)
         END DO
         CLOSE(29)
+
+        IF(itherm.eq.1) THEN
+          OPEN(29,FILE="dtherm", access="append")
+          WRITE(29,*) "NH THERMOSTAT", itime
+          DO i=1,nhchain
+            WRITE(29,'(3(1X,E15.8))') xi(i), vxi(i), axi(i)
+          ENDDO
+          CLOSE(29)
+        ENDIF
 
         IF(ibo_md.gt.0) THEN
           OPEN(29,FILE="update_xatom")
@@ -1120,12 +1185,12 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
           DO i=1,mst
             IF(ibo_md.le.0) THEN
               IF(i.le.mmn) THEN
-                WRITE(18,180) E_st(i,kpt,iislda) * Hart, &
-                              dos(i,kpt,iislda),E_td(i,kpt,iislda) * Hart, &
+                WRITE(18,180) E_st(i,kpt,iislda) * Hart, dos(i,kpt,iislda), &
+                              E_td(i,kpt,iislda) * Hart, occ0(i,kpt,iislda), &
                               frac(1, i), frac(2, i)
               ELSE
-                WRITE(18,180) E_st(i,kpt,iislda) * Hart, &
-                              dos(i,kpt,iislda),E_st(i,kpt,iislda) * Hart, &
+                WRITE(18,180) E_st(i,kpt,iislda) * Hart, dos(i,kpt,iislda), &
+                              E_st(i,kpt,iislda) * Hart, dos(i,kpt,iislda), &
                               frac(1, i), frac(2, i)
               END IF
             ELSE
@@ -1152,10 +1217,10 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
         CALL unfmtIO_c(18,filename,cc_pp0,mst*mmn*nkpt*islda,1,0)
         !!!!!!!!!!!!!!!!!!
         ! output H(t2)
-        filename="H_t2."
-        WRITE(fileindex,'(i)') itime-1
-        filename=trim(adjustl(filename))//trim(adjustl(fileindex))
-        CALL unfmtIO_c(18,filename,H_T,mst*mst*nkpt*islda,1,0)
+        ! filename="H_t2."
+        ! WRITE(fileindex,'(i)') itime-1
+        ! filename=trim(adjustl(filename))//trim(adjustl(fileindex))
+        ! CALL unfmtIO_c(18,filename,H_T,mst*mst*nkpt*islda,1,0)
       END IF
       ! 5. end
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1200,13 +1265,14 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
           WRITE(18) itime-1, time-dt_step
         END IF
         WRITE(18) xatom
-        WRITE(18) VX
-        WRITE(18) VY
-        WRITE(18) VZ
+        WRITE(18) Vi
         WRITE(18) cc_pp0
         WRITE(18) E_st0
         WRITE(18) Ealphat,TS0,E_dDrho0
-        WRITE(18) Delt,Box,DesiredTemp,TotalEn
+        WRITE(18) Delt,Box,InitTemp,DesiredTemp,TotalEn,Ekin
+        IF(itherm.eq.1) THEN
+          WRITE(18) xi, vxi, axi
+        ENDIF
         CLOSE(18)
 
 !        OPEN(18,FILE="pulay_st",FORM="unformatted")
@@ -1298,7 +1364,7 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
 9998  CONTINUE
     ! end of output
 
-180 FORMAT(100(E15.8,1x))
+180 FORMAT(300(E15.8,1x))
 
     IF(idone.eq.-1) EXIT Loop_itime
 
@@ -1333,7 +1399,7 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
           t_left = t_timewall - (t_step1 - t_start_petot)
           step_avail = floor(t_left / t_loop_ave)
           WRITE(17,'(A,I10)') " Expected to end at time step   :", step_avail + itime - 1
-          IF(step_avail.le.10.and.itime.lt.(ntime_init+ntime-1)) THEN
+          IF(step_avail.le.4.and.itime.lt.(ntime_init+ntime-1)) THEN
           ! almost reach timewall, so just do one more step
             ntime = itime - ntime_init + 1
             write(17,*) "Do one more time step, then stop"
@@ -1450,13 +1516,13 @@ SUBROUTINE initial_TDDFT()
 
     !!!!!!!!!!!!!!!!!!!!!!!!
     ! calc the semiconductor surface polarization effect
-    if(inode.eq.1.and.ibshift.eq.1) call bandshift0(xatom, iatom, AL)
-    !if(inode.eq.1) call bandshift0(xatom, iatom, AL)
-    if(ibshift.eq.1) then
-      call mpi_bcast(dP, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
-      call mpi_bcast(gz_1, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
-      call mpi_bcast(gz_2, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
-    endif
+    !if(inode.eq.1.and.ibshift.eq.1) call bandshift0(xatom, iatom, AL)
+    !!if(inode.eq.1) call bandshift0(xatom, iatom, AL)
+    !if(ibshift.eq.1) then
+    !  call mpi_bcast(dP, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
+    !  call mpi_bcast(gz_1, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
+    !  call mpi_bcast(gz_2, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
+    !endif
 
     IF(inode.eq.1) THEN
       t_0=mpi_wtime()
@@ -1540,29 +1606,36 @@ SUBROUTINE initial_TDDFT()
       !!!!!!!!!!!!!!!!!!!
       IF(ifatom.eq.2) xatom(:, :) = dxatom_in(:, :, ntime_init+1)
       !!!!!!!!!!!!!!!!!!!
-      READ(18) VX
-      READ(18) VY
-      READ(18) VZ
+      READ(18) Vi
       READ(18) cc_pp0
       READ(18) E_st0
       READ(18) Ealphat,TS0,E_dDrho0
-      READ(18) rtmp,Box,DesiredTemp,TotalEn
+      READ(18) rtmp,Box,InitTemp,DesiredTemp,TotalEn,Ekin
+      IF(itherm.eq.1) THEN
+        READ(18) xi, vxi, axi
+      ENDIF
       CLOSE(18)
 
     END IF
 
     CALL mpi_bcast(xatom,3*matom,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    CALL mpi_bcast(VX,matom,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    CALL mpi_bcast(VY,matom,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
-    CALL mpi_bcast(VZ,matom,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    CALL mpi_bcast(Vi,3*matom,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(cc_pp0,mst*mmn*nkpt*islda,MPI_DOUBLE_COMPLEX,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(E_st0,mst*nkpt*islda,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(Box,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    CALL mpi_bcast(InitTemp,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(DesiredTemp,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(TotalEn,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    CALL mpi_bcast(Ekin,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(Ealphat,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(TS0,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
     CALL mpi_bcast(E_dDrho0,1,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+
+    IF(itherm.eq.1) THEN
+      CALL mpi_bcast(xi,7,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+      CALL mpi_bcast(vxi,7,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+      CALL mpi_bcast(axi,7,MPI_REAL8,0,MPI_COMM_WORLD,ierr)
+    ENDIF
 
     CALL unfmtIO_r(18,focc_st,occ0,mst*nkpt*islda,0,1)
 

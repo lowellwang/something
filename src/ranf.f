@@ -13,6 +13,21 @@ c                   random number generator.
       RETURN
 C ----------------------------------------------------C
       END
+
+!     Normal distribution random number generator
+      FUNCTION RANG(ISEED,MEAN,WIDTH)
+
+      IMPLICIT NONE
+      INTEGER ISEED
+      DOUBLE PRECISION MEAN, WIDTH, TWOPI, RANF, RANG
+      PARAMETER ( TWOPI = 6.283185307179586D0 )
+
+      RANG = COS(TWOPI*RANF(ISEED)) * SQRT(-2.D0*LOG(RANF(ISEED)))
+      RANG = WIDTH * RANG + MEAN
+
+      RETURN
+      END
+
 **==randx.spg  processed by SPAG 4.52O  at 18:54 on 27 Mar 1996
  
       FUNCTION RANDX(Iseed)

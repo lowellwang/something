@@ -1,5 +1,8 @@
-SUBROUTINE input_TDDFT(tot, m, mmn0, iwg_in, imax, rkappa, ivlct, ntemp, VX, VY, VZ, &
-                   finp_td, ftmp_st, fdx_td, t_timewall)
+SUBROUTINE input_TDDFT(tot, m, mmn0, iwg_in, imax, rkappa, &
+                       ivlct, ntemp, Vi, itherm, nhchain, qmass, &
+                       xi, vxi, axi, &
+                       InitTemp, DesiredTemp, &
+                       finp_td, ftmp_st, fdx_td, t_timewall)
 
   ! Read TDDFT parameter from file finp_td 
   ! If needed, find correct ftmp_st then read it too
@@ -9,9 +12,12 @@ SUBROUTINE input_TDDFT(tot, m, mmn0, iwg_in, imax, rkappa, ivlct, ntemp, VX, VY,
   INCLUDE 'mpif.h'
   INCLUDE 'param.escan_real_f90'
 
-  INTEGER :: m,mmn0,ierr,ierr2,iline,imax,i,j,k,l,l2,iwg_in,ivlct,ntemp,itmp
+  INTEGER :: m,mmn0,ierr,ierr2,ierr3,iline,imax,i,j,k,l,l2,iwg_in,ivlct,ntemp,itmp
+  INTEGER :: itherm, nhchain
+  REAL(8), DIMENSION(7) :: qmass, xi, vxi, axi
+  REAL(8) :: InitTemp, DesiredTemp
   REAL(8) :: rtmp(10),tot,rkappa(3),t_timewall
-  REAL(8), DIMENSION(natom) :: VX, VY, VZ
+  REAL(8), DIMENSION(3, natom) :: Vi
   LOGICAL :: bmass,bkappa
   CHARACTER(20) :: finp_td,ftmp_st,fdx_td
   CHARACTER(50) :: filename,fileindex,ctmp
@@ -20,6 +26,9 @@ SUBROUTINE input_TDDFT(tot, m, mmn0, iwg_in, imax, rkappa, ivlct, ntemp, VX, VY,
   iline = 0
   bmass = .false.
   bkappa = .true.
+  ierr = 0
+  ierr2 = 0
+  ierr3 = 0
 
   mst2 = -1
   mmn = -1
@@ -27,7 +36,6 @@ SUBROUTINE input_TDDFT(tot, m, mmn0, iwg_in, imax, rkappa, ivlct, ntemp, VX, VY,
   dtMD = -1.d0
   iMD = -1
   ibo_md = -1
-  temperature = -1.d0
   ntemp = natom
   mscf = -1
   tolrho = -1.d0
@@ -50,6 +58,10 @@ SUBROUTINE input_TDDFT(tot, m, mmn0, iwg_in, imax, rkappa, ivlct, ntemp, VX, VY,
   jxi = -1
   rxi = -1.d0
   ivlct = 0
+  itherm = 0
+  nhchain = 0
+  InitTemp = 0.d0
+  DesiredTemp = 0.d0
   t_timewall = -1.d0
 
   open(14,file=finp_td,status='old',action='read',iostat=ierr)
@@ -157,14 +169,36 @@ SUBROUTINE input_TDDFT(tot, m, mmn0, iwg_in, imax, rkappa, ivlct, ntemp, VX, VY,
   elseif(index(line,'imd').ne.0) then
     read(ctmp,*) iMD
 
+  elseif(index(line,'nhchain').ne.0) then
+    read(ctmp,*) nhchain
+    if(nhchain.gt.7) nhchain=7
+
+  elseif(index(line,'qmass').ne.0) then
+    read(ctmp,*) qmass(1)
+
+  elseif(index(line,'thermostat').ne.0) then
+    ierr3 = 1
+    if(inode_tot.eq.1) &
+      write(6,*) "Read thermostat from "//trim(adjustl(finp_td))
+    if(nhchain.le.0) goto 666
+    do i = 1, nhchain
+      iline=iline+1
+      read(14,*,iostat=ierr3,end=666,err=666) xi(i), vxi(i), axi(i)
+      if(inode_tot.eq.1) &
+        write(6,'(3(1X,E15.8))') xi(i), vxi(i), axi(i)
+    end do
+
   elseif(index(line,'ibo_md').ne.0) then
     read(ctmp,*) ibo_md
 
   elseif(index(line,'ntmprtr').ne.0) then
     read(ctmp,*) ntemp
 
-  elseif(index(line,'tmprtr').ne.0) then
-    read(ctmp,*) temperature
+  elseif(index(line,'tmpst').ne.0) then
+    read(ctmp,*) InitTemp
+
+  elseif(index(line,'tmped').ne.0) then
+    read(ctmp,*) DesiredTemp
 
   elseif(index(line,'mdmass').ne.0) then
     iline=iline+1
@@ -192,9 +226,9 @@ SUBROUTINE input_TDDFT(tot, m, mmn0, iwg_in, imax, rkappa, ivlct, ntemp, VX, VY,
       write(6,*) "Read velocity from "//trim(adjustl(finp_td))
     do i = 1, natom
       iline=iline+1
-      read(14,*,iostat=ierr2,end=666,err=666) itmp, VX(i), VY(i), VZ(i)
+      read(14,*,iostat=ierr2,end=666,err=666) itmp, Vi(1,i), Vi(2,i), Vi(3,i)
       if(inode_tot.eq.1) &
-        write(6,'(i4,2x,3(E15.8,1x))') itmp, VX(i), VY(i), VZ(i)
+        write(6,'(i4,2x,3(E15.8,1x))') itmp, Vi(1,i), Vi(2,i), Vi(3,i)
     end do
 
   elseif(index(line,'dxatom_file').ne.0) then
@@ -239,6 +273,16 @@ SUBROUTINE input_TDDFT(tot, m, mmn0, iwg_in, imax, rkappa, ivlct, ntemp, VX, VY,
    call MPI_abort(MPI_COMM_WORLD,ierr)
    stop
 
+  elseif(inode_tot.eq.1.and.ierr3.ne.0.and.nhchain.le.0) then
+   write(6,*) "--ERROR: Cannot find nhchain before thermostat"
+   call MPI_abort(MPI_COMM_WORLD,ierr)
+   stop
+
+  elseif(inode_tot.eq.1.and.ierr3.ne.0.and.nhchain.gt.0) then
+   write(6,*) "--ERROR: Cannot read thermostat"
+   call MPI_abort(MPI_COMM_WORLD,ierr)
+   stop
+
   endif
 
   if(mst2.lt.0) mst2=m
@@ -255,6 +299,25 @@ SUBROUTINE input_TDDFT(tot, m, mmn0, iwg_in, imax, rkappa, ivlct, ntemp, VX, VY,
 
   if(dtMD.le.0.d0.and.inode_tot.eq.1) then
     write(6,*) "--ERROR: Cannot read dt, or dt = 0.0"
+    call MPI_abort(MPI_COMM_WORLD,ierr)
+    stop
+  endif
+
+  if(iMD.eq.11) then
+    itherm=1
+    do i=2,7
+      qmass(i) = qmass(1)/3.d0/dble(ntemp)
+    enddo
+  endif
+
+  if(itherm.eq.1.and.nhchain.le.0.and.inode_tot.eq.1) then
+    write(6,*) "--ERROR: iMD=11 while nhchain not found"
+    call MPI_abort(MPI_COMM_WORLD,ierr)
+    stop
+  endif
+
+  if(itherm.eq.1.and.qmass(1).le.0.d0.and.inode_tot.eq.1) then
+    write(6,*) "--ERROR: iMD=11 while qmass not found"
     call MPI_abort(MPI_COMM_WORLD,ierr)
     stop
   endif
@@ -284,7 +347,8 @@ SUBROUTINE input_TDDFT(tot, m, mmn0, iwg_in, imax, rkappa, ivlct, ntemp, VX, VY,
 
   if(iMD.lt.0) iMD=1
   if(ibo_md.lt.0) ibo_md=0
-  if(temperature.lt.0.d0) temperature=0.d0
+  if(InitTemp.le.0.d0) InitTemp=0.d0
+  if(DesiredTemp.le.0.d0) DesiredTemp=0.d0
   if(mscf.lt.0) mscf=100
   if(tolrho.lt.0.d0) tolrho=1.d-3
   if(tolintgl.lt.0.d0) tolintgl=1.d-4
