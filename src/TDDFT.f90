@@ -417,13 +417,13 @@ Loop_itime: DO itime = ntime_init + 1, ntime_init + ntime
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! calc the semiconductor surface polarization effect
-    if(inode.eq.1.and.ibshift.eq.1) call bandshift0(xatom, iatom, AL)
-    !if(inode.eq.1) call bandshift0(xatom, iatom, AL)
-    if(ibshift.eq.1) then
-      call mpi_bcast(dP, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
-      call mpi_bcast(gz_1, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
-      call mpi_bcast(gz_2, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
-    endif
+    !if(inode.eq.1.and.ibshift.eq.1) call bandshift0(xatom, iatom, AL)
+    !!if(inode.eq.1) call bandshift0(xatom, iatom, AL)
+    !if(ibshift.eq.1) then
+    !  call mpi_bcast(dP, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
+    !  call mpi_bcast(gz_1, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
+    !  call mpi_bcast(gz_2, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
+    !endif
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! check external field
@@ -949,54 +949,54 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! 0. calc states distribution and dipole(i,j)
-      IF(ibshift.eq.1) THEN
-      !IF(1.eq.1) THEN
+      !IF(ibshift.eq.1) THEN
+      !!IF(1.eq.1) THEN
 
-      string = "Before calc_dipole"
-      CALL timing_mpi(string,t_0)
+      !string = "Before calc_dipole"
+      !CALL timing_mpi(string,t_0)
 
-      itmp = 165
-      itmp2 = mmn
-      call calc_dipole(1, AL, nkpt, islda, frac, dipole, workr, totNel, itmp, itmp2)
+      !itmp = 165
+      !itmp2 = mmn
+      !call calc_dipole(1, AL, nkpt, islda, frac, dipole, workr, totNel, itmp, itmp2)
 
-      string = "calc_dipole"
-      CALL timing_mpi(string,t_0)
+      !string = "calc_dipole"
+      !CALL timing_mpi(string,t_0)
 
-      IF(1.eq.1.and.inode.eq.1) THEN
+      !IF(1.eq.1.and.inode.eq.1) THEN
 
-        filename="phi_dipole."
-        WRITE(fileindex,'(i)') nkpt
-        filename=trim(adjustl(filename))//trim(adjustl(fileindex))//"."
-        WRITE(fileindex,'(i)') islda
-        filename=trim(adjustl(filename))//trim(adjustl(fileindex))//"."
-        WRITE(fileindex,'(i)') itime-1
-        filename=trim(adjustl(filename))//trim(adjustl(fileindex))
+      !  filename="phi_dipole."
+      !  WRITE(fileindex,'(i)') nkpt
+      !  filename=trim(adjustl(filename))//trim(adjustl(fileindex))//"."
+      !  WRITE(fileindex,'(i)') islda
+      !  filename=trim(adjustl(filename))//trim(adjustl(fileindex))//"."
+      !  WRITE(fileindex,'(i)') itime-1
+      !  filename=trim(adjustl(filename))//trim(adjustl(fileindex))
 
-        OPEN(29,FILE=filename)
-        REWIND(29)
-        DO i = itmp, itmp2
-          WRITE(29,180) (dipole(i,j,1), j=itmp, itmp2)
-        END DO
-        CLOSE(29)
+      !  OPEN(29,FILE=filename)
+      !  REWIND(29)
+      !  DO i = itmp, itmp2
+      !    WRITE(29,180) (dipole(i,j,1), j=itmp, itmp2)
+      !  END DO
+      !  CLOSE(29)
 
-        filename="psi_dipole."
-        WRITE(fileindex,'(i)') nkpt
-        filename=trim(adjustl(filename))//trim(adjustl(fileindex))//"."
-        WRITE(fileindex,'(i)') islda
-        filename=trim(adjustl(filename))//trim(adjustl(fileindex))//"."
-        WRITE(fileindex,'(i)') itime-1
-        filename=trim(adjustl(filename))//trim(adjustl(fileindex))
+      !  filename="psi_dipole."
+      !  WRITE(fileindex,'(i)') nkpt
+      !  filename=trim(adjustl(filename))//trim(adjustl(fileindex))//"."
+      !  WRITE(fileindex,'(i)') islda
+      !  filename=trim(adjustl(filename))//trim(adjustl(fileindex))//"."
+      !  WRITE(fileindex,'(i)') itime-1
+      !  filename=trim(adjustl(filename))//trim(adjustl(fileindex))
 
-        OPEN(29,FILE=filename)
-        REWIND(29)
-        DO i = itmp, itmp2
-          WRITE(29,180) (dipole(i,j,2), j=itmp, itmp2)
-        END DO
-        CLOSE(29)
+      !  OPEN(29,FILE=filename)
+      !  REWIND(29)
+      !  DO i = itmp, itmp2
+      !    WRITE(29,180) (dipole(i,j,2), j=itmp, itmp2)
+      !  END DO
+      !  CLOSE(29)
 
-      ENDIF
+      !ENDIF
 
-      ENDIF
+      !ENDIF
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! 1. calc the total dipole moment, by Jie Ma
@@ -1516,13 +1516,13 @@ SUBROUTINE initial_TDDFT()
 
     !!!!!!!!!!!!!!!!!!!!!!!!
     ! calc the semiconductor surface polarization effect
-    if(inode.eq.1.and.ibshift.eq.1) call bandshift0(xatom, iatom, AL)
-    !if(inode.eq.1) call bandshift0(xatom, iatom, AL)
-    if(ibshift.eq.1) then
-      call mpi_bcast(dP, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
-      call mpi_bcast(gz_1, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
-      call mpi_bcast(gz_2, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
-    endif
+    !if(inode.eq.1.and.ibshift.eq.1) call bandshift0(xatom, iatom, AL)
+    !!if(inode.eq.1) call bandshift0(xatom, iatom, AL)
+    !if(ibshift.eq.1) then
+    !  call mpi_bcast(dP, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
+    !  call mpi_bcast(gz_1, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
+    !  call mpi_bcast(gz_2, 1, MPI_REAL8, 0, MPI_COMM_WORLD, ierr)
+    !endif
 
     IF(inode.eq.1) THEN
       t_0=mpi_wtime()

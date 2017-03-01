@@ -39,7 +39,7 @@ dfatom0,1:      DFT forces on each ions
 cc.*:           (BINARY) Coefficients {cij} (psi_i = \sum cij * phi_j)
 
 occ.*:          States energies
-# It contains energies and occupations of adiabatic states, and energies of time-dependent states.
+# It contains energies and occupations of adiabatic states (column 1&2) and time-dependent states (column 3&4).
 
 (b) Savepoint files: 
 # These files are output to disk only:
@@ -73,9 +73,13 @@ see original PEtot readme
 2. TDDFT.input
 --------------------------------------------
 # Basic format: parameter = value, one line for one parameter.
-# Parameters can be written with and without quote mark: Both dt and 'dt' are OK.
+#
+# Parameters can be written with or without quote mark: Both dt and 'dt' are OK.
 # Lines start with '!' will be ignored as comments.
 # Blank lines will be ignored.
+#
+# During running, any issues on the input parameter will be shown in the output, 
+# staring with "--WARNING" or "--ERROR"
 
 Parameter list: (* are essential parameters)
 
@@ -131,7 +135,7 @@ nwrite:         Controller of temp file (savepoint) output
 # Smaller 'nwrite' needs larger disk space and higher I/O frequncy, while larger 'nwrite' may not store the newest results in time.
 # Set it according to your need.
 
-tmprtr:         Initial temperature (K)
+tmpst:         Initial temperature (K)
 # Default: 0.d0 
 # Should >= 0.d0
 # It is only used to generate random ionic velocities at t=0.
@@ -162,12 +166,13 @@ ivdt:           Flag for time-dependent external electric field
 imd:            MD method
 # Default: 1
 # For now only 'imd'=1 (Verlet method) is supported.
+# (experimental) Use imd = 11 to turn on Nose-Hoover chain + Verlet method calculation.
 
 iscaling:       Flag for scaling ionic kinetic energies
 # Default: 0
 # One can never use infinite accuracy in calculations, so the total energy cannot be perfectly constant.
 # Use this to scale ionic energies at each time step, so that total energy can be exactly constant.
-# NOT RECOMMENTED if you do not put corrections on DFT potentials.
+# NOT RECOMMENTED unless you do put corrections on DFT potentials.
 
 ibandshift:     (experimental) Flag for correcting DFT state levels
 # Default: 0

@@ -145,13 +145,13 @@ cccccccccccc The current formula is only correct for Fermi-Dirac distribution
       y=(E_st(m,kpt,iislda)-Ef)/dE
       call Fermi(yy,S_occ,y,itypeFermi)
       occ(m,kpt,iislda)=2.d0/islda*yy*weighkpt(kpt)
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      !  2016/10/04
-      if(occ(m,kpt,iislda).lt.1.D-15) then
-        occ(m,kpt,iislda)=0.D0
-      elseif(abs(2.D0-occ(m,kpt,iislda)).lt.1.D-15) then
-        occ(m,kpt,iislda)=2.D0
-      endif
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      !!  2016/10/04
+      !if(occ(m,kpt,iislda).lt.1.D-15) then
+      !  occ(m,kpt,iislda)=0.D0
+      !elseif(abs(2.D0-occ(m,kpt,iislda)).lt.1.D-15) then
+      !  occ(m,kpt,iislda)=2.D0
+      !endif
       TS=TS+2.d0/islda*weighkpt(kpt)*dE*S_occ
       enddo
       enddo
