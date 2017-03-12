@@ -110,10 +110,11 @@ SUBROUTINE bandshift(kpt, iislda, E_st, AL, tot, iatom, xatom)
 
   ! energy corrections
   ! better to read them from external files
-  dV_1_VB =-0.2541D0/HART
-  dV_2_VB =-0.2541D0/HART
-  dV_1_CB = 0.4423D0/HART + dP
-  dV_2_CB = 0.2167D0/HART
+  !dV_1_VB =-1.0295D0/HART - dP
+  dV_1_VB =-0.6865D0/HART
+  dV_2_VB =-0.6865D0/HART
+  dV_1_CB = 1.0323D0/HART + dP
+  dV_2_CB = 0.7920D0/HART
 
   ! find the LUMO state
   nlumo = floor(tot / 2.d0 + 0.1) + 1
@@ -252,13 +253,13 @@ SUBROUTINE bandshift(kpt, iislda, E_st, AL, tot, iatom, xatom)
       dV1 = dV_1_CB
       dV2 = dV_2_CB
     elseif(i.eq.(nlumo+1)) then ! additional correction for higher states
-      dV1 = dV_1_CB + 0.0970d0/HART
+      dV1 = dV_1_CB + 0.234d0/HART
       dV2 = dV_2_CB
     elseif(i.eq.(nlumo+2)) then ! additional correction for higher states
-      dV1 = dV_1_CB + 0.1000d0/HART
+      dV1 = dV_1_CB + 0.234d0/HART
       dV2 = dV_2_CB
     elseif(i.ge.(nlumo+3)) then ! additional correction for higher states
-      dV1 = dV_1_CB + 0.1296d0/HART
+      dV1 = dV_1_CB + 0.234d0/HART
       dV2 = dV_2_CB
     else ! VB states
       dV1 = dV_1_VB
