@@ -249,18 +249,18 @@ SUBROUTINE bandshift(kpt, iislda, E_st, AL, tot, iatom, xatom)
 
   E_corrected = ZERO
   do i = 1,mst
-    if(i.eq.nlumo) then ! correct CB states
+    if(i.ge.nlumo) then ! correct CB states
       dV1 = dV_1_CB
       dV2 = dV_2_CB
-    elseif(i.eq.(nlumo+1)) then ! additional correction for higher states
-      dV1 = dV_1_CB + 0.234d0/HART
-      dV2 = dV_2_CB
-    elseif(i.eq.(nlumo+2)) then ! additional correction for higher states
-      dV1 = dV_1_CB + 0.234d0/HART
-      dV2 = dV_2_CB
-    elseif(i.ge.(nlumo+3)) then ! additional correction for higher states
-      dV1 = dV_1_CB + 0.234d0/HART
-      dV2 = dV_2_CB
+!    elseif(i.eq.(nlumo+1)) then ! additional correction for higher states
+!      dV1 = dV_1_CB + 0.234d0/HART
+!      dV2 = dV_2_CB
+!    elseif(i.eq.(nlumo+2)) then ! additional correction for higher states
+!      dV1 = dV_1_CB + 0.234d0/HART
+!      dV2 = dV_2_CB
+!    elseif(i.ge.(nlumo+3)) then ! additional correction for higher states
+!      dV1 = dV_1_CB + 0.234d0/HART
+!      dV2 = dV_2_CB
     else ! VB states
       dV1 = dV_1_VB
       dV2 = dV_2_VB

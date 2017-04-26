@@ -413,7 +413,7 @@ Loop_itime: DO itime = ntime_init + 1, ntime_init + ntime
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     iscale = i_scale
-    IF(itime.le.3) iscale = 0
+    IF(itime.le.31) iscale = 0
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! calc the semiconductor surface polarization effect
