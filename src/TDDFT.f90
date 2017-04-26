@@ -193,6 +193,7 @@ SUBROUTINE TDDFT(xatom, fatom, workr_n, Etot, iforce_cal, ido_rho, &
   npulay_max_6 = 40
   n_dt_max = 1000
 
+  Vi = 0.d0
   fatom = 0.d0
   DeltR = 0.d0
   occ = 1.d0
