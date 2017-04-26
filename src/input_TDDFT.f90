@@ -7,6 +7,7 @@ SUBROUTINE input_TDDFT(tot, m, mmn0, iwg_in, imax, rkappa, &
   ! Read TDDFT parameter from file finp_td 
   ! If needed, find correct ftmp_st then read it too
 
+  USE data
   USE data_TDDFT
   IMPLICIT NONE
   INCLUDE 'mpif.h'
@@ -17,7 +18,7 @@ SUBROUTINE input_TDDFT(tot, m, mmn0, iwg_in, imax, rkappa, &
   REAL(8), DIMENSION(7) :: qmass, xi, vxi, axi
   REAL(8) :: InitTemp, DesiredTemp
   REAL(8) :: rtmp(10),tot,rkappa(3),t_timewall
-  REAL(8), DIMENSION(3, natom) :: Vi
+  REAL(8), DIMENSION(3, matom) :: Vi
   LOGICAL :: bmass,bkappa
   CHARACTER(20) :: finp_td,ftmp_st,fdx_td
   CHARACTER(50) :: filename,fileindex,ctmp
@@ -61,6 +62,7 @@ SUBROUTINE input_TDDFT(tot, m, mmn0, iwg_in, imax, rkappa, &
   itherm = 0
   nhchain = 0
   InitTemp = 0.d0
+  Vi = 0.d0
   DesiredTemp = 0.d0
   t_timewall = -1.d0
 

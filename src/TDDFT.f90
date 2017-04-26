@@ -193,6 +193,7 @@ SUBROUTINE TDDFT(xatom, fatom, workr_n, Etot, iforce_cal, ido_rho, &
   npulay_max_6 = 40
   n_dt_max = 1000
 
+  Vi = 0.d0
   fatom = 0.d0
   DeltR = 0.d0
   occ = 1.d0
@@ -413,7 +414,7 @@ Loop_itime: DO itime = ntime_init + 1, ntime_init + ntime
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     iscale = i_scale
-    IF(itime.le.3) iscale = 0
+    IF(itime.le.31) iscale = 0
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! calc the semiconductor surface polarization effect
@@ -1399,7 +1400,7 @@ Loop_itime_in: DO itime_in = 1,n_dt_now
           t_left = t_timewall - (t_step1 - t_start_petot)
           step_avail = floor(t_left / t_loop_ave)
           WRITE(17,'(A,I10)') " Expected to end at time step   :", step_avail + itime - 1
-          IF(step_avail.le.4.and.itime.lt.(ntime_init+ntime-1)) THEN
+          IF(step_avail.le.3.and.itime.lt.(ntime_init+ntime-1)) THEN
           ! almost reach timewall, so just do one more step
             ntime = itime - ntime_init + 1
             write(17,*) "Do one more time step, then stop"
